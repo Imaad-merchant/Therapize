@@ -40,9 +40,9 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium hidden sm:inline">
@@ -77,7 +77,7 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
       </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+      <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
@@ -99,7 +99,9 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
       </ScrollArea>
 
       {/* Input */}
-      <ChatInput onSend={onSend} disabled={isStreaming || !isSessionActive} />
+      <div className="flex-shrink-0">
+        <ChatInput onSend={onSend} disabled={isStreaming || !isSessionActive} />
+      </div>
     </div>
   )
 }

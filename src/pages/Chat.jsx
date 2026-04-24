@@ -56,7 +56,7 @@ export default function Chat() {
   const isActive = activeSession?.is_active !== false
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex min-h-0 overflow-hidden">
       {/* Desktop session list */}
       <div className="hidden lg:block w-72 flex-shrink-0">
         <SessionList
@@ -89,7 +89,7 @@ export default function Chat() {
       </Sheet>
 
       {/* Chat area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 min-h-0">
         <ChatContainer
           onSend={sendMessage}
           onEndSession={endCurrentSession}

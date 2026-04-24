@@ -1,6 +1,6 @@
-import { openai } from '../lib/claude.js'
-import { supabase } from '../lib/supabase.js'
-import { verifyAuth } from '../middleware/auth.js'
+import { openai } from '../_lib/claude.js'
+import { supabase } from '../_lib/supabase.js'
+import { verifyAuth } from '../_middleware/auth.js'
 
 export const config = {
   maxDuration: 120,

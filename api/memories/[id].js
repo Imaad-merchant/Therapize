@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase.js'
-import { verifyAuth } from '../middleware/auth.js'
+import { supabase } from '../_lib/supabase.js'
+import { verifyAuth } from '../_middleware/auth.js'
 
 export default async function handler(req, res) {
   const user = await verifyAuth(req)

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../_lib/supabase.js'
 
 export async function verifyAuth(req) {
   const authHeader = req.headers.authorization || req.headers['authorization']

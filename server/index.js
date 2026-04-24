@@ -6,6 +6,8 @@ const { authMiddleware } = require('./middleware/auth')
 const chatRoutes = require('./routes/chat')
 const insightsRoutes = require('./routes/insights')
 const onboardingRoutes = require('./routes/onboarding')
+const analyzeRoutes = require('./routes/analyze')
+const memoriesRoutes = require('./routes/memories')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -22,6 +24,8 @@ const chatLimiter = rateLimit({
 app.use('/api/chat', chatLimiter, authMiddleware, chatRoutes)
 app.use('/api/insights', authMiddleware, insightsRoutes)
 app.use('/api/onboarding', authMiddleware, onboardingRoutes)
+app.use('/api/analyze', authMiddleware, analyzeRoutes)
+app.use('/api/memories', authMiddleware, memoriesRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })

@@ -2,6 +2,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { useAuth } from './useAuth'
 import { useSessions } from './useSessions'
 import { useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 
 export function useChat() {
   const {
@@ -9,6 +10,9 @@ export function useChat() {
     isStreaming,
     streamingContent,
     currentSessionId,
+    chatMode,
+    brainInsights,
+    isAnalyzing,
     addMessage,
     setMessages,
     setStreaming,
@@ -16,11 +20,41 @@ export function useChat() {
     clearStreamingContent,
     setCurrentSession,
     resetChat,
+    setBrainInsights,
+    setAnalyzing,
+    setChatMode,
   } = useChatStore()
 
   const { getAccessToken, user } = useAuth()
   const { createSession, endSession: endSessionMutation } = useSessions()
   const queryClient = useQueryClient()
+
+  // Background insight analysis — fires after each assistant response
+  const analyzeConversation = async () => {
+    if (!currentSessionId) return
+    setAnalyzing(true)
+
+    try {
+      const token = await getAccessToken()
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ session_id: currentSessionId }),
+      })
+
+      if (response.ok) {
+        const insights = await response.json()
+        setBrainInsights(insights)
+      }
+    } catch (error) {
+      console.error('Analyze error:', error)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const sendMessage = async (content) => {
     if (!currentSessionId || isStreaming) return
@@ -47,6 +81,7 @@ export function useChat() {
         body: JSON.stringify({
           session_id: currentSessionId,
           message: content,
+          chat_mode: chatMode,
         }),
       })
 
@@ -95,6 +130,9 @@ export function useChat() {
         created_at: new Date().toISOString(),
       }
       addMessage(assistantMessage)
+
+      // Fire insight analysis in background after each exchange
+      analyzeConversation()
     } catch (error) {
       addMessage({
         id: crypto.randomUUID(),
@@ -114,6 +152,7 @@ export function useChat() {
     const session = await createSession.mutateAsync()
     setCurrentSession(session.id)
     setMessages([])
+    setBrainInsights(null)
 
     // Send initial greeting
     setStreaming(true)
@@ -130,6 +169,7 @@ export function useChat() {
         body: JSON.stringify({
           session_id: session.id,
           message: '__GREETING__',
+          chat_mode: chatMode,
         }),
       })
 
@@ -202,6 +242,35 @@ export function useChat() {
   const loadSession = async (sessionId, existingMessages) => {
     setCurrentSession(sessionId)
     setMessages(existingMessages)
+    setBrainInsights(null)
+
+    // Load persisted brain_insights and chat_mode from the session row
+    try {
+      const { data: sessionRow } = await supabase
+        .from('sessions')
+        .select('brain_insights, chat_mode')
+        .eq('id', sessionId)
+        .single()
+
+      if (sessionRow?.brain_insights) {
+        setBrainInsights(sessionRow.brain_insights)
+      }
+      if (sessionRow?.chat_mode) {
+        setChatMode(sessionRow.chat_mode)
+      }
+    } catch (e) {
+      console.error('Session load error:', e)
+    }
+
+    // Re-analyze if the session has messages but no stored insights yet
+    if (existingMessages.length > 0) {
+      setTimeout(() => {
+        const store = useChatStore.getState()
+        if (store.currentSessionId === sessionId && !store.brainInsights) {
+          analyzeConversation()
+        }
+      }, 100)
+    }
   }
 
   return {
@@ -209,10 +278,14 @@ export function useChat() {
     isStreaming,
     streamingContent,
     currentSessionId,
+    chatMode,
+    brainInsights,
+    isAnalyzing,
     sendMessage,
     startNewSession,
     endCurrentSession,
     loadSession,
     resetChat,
+    analyzeConversation,
   }
 }

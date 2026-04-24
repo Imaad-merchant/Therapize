@@ -3,11 +3,12 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
+import { ModeToggle } from './ModeToggle'
 import { Button } from '@/components/ui/button'
-import { Brain, Sparkles, Square } from 'lucide-react'
+import { Brain, Sparkles, Square, PanelRightOpen } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 
-export function ChatContainer({ onSend, onEndSession, isSessionActive }) {
+export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleBrainPanel, brainPanelOpen }) {
   const { messages, isStreaming, streamingContent, currentSessionId } =
     useChatStore()
   const scrollRef = useRef(null)
@@ -41,24 +42,38 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium hidden sm:inline">
             Session in progress
           </span>
         </div>
-        {isSessionActive && (
+
+        <ModeToggle />
+
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
-            variant="outline"
+            variant={brainPanelOpen ? 'secondary' : 'outline'}
             size="sm"
-            onClick={onEndSession}
+            onClick={onToggleBrainPanel}
             className="gap-1.5 text-xs"
           >
-            <Square className="w-3 h-3" />
-            End Session
+            <Brain className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Brain</span>
           </Button>
-        )}
+          {isSessionActive && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEndSession}
+              className="gap-1.5 text-xs"
+            >
+              <Square className="w-3 h-3" />
+              <span className="hidden sm:inline">End</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

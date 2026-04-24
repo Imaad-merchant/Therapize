@@ -4,7 +4,7 @@ const { supabase } = require('../lib/supabase')
 const { buildSystemPrompt, createChatCompletion, openai } = require('../lib/claude')
 
 router.post('/', async (req, res) => {
-  const { session_id, message } = req.body
+  const { session_id, message, chat_mode } = req.body
   const userId = req.user.id
 
   if (!session_id || !message) {
@@ -38,8 +38,38 @@ router.post('/', async (req, res) => {
       })
     }
 
+    // Persist chat mode on session
+    if (chat_mode) {
+      await supabase
+        .from('sessions')
+        .update({ chat_mode })
+        .eq('id', session_id)
+        .eq('user_id', userId)
+    }
+
     // Build messages for OpenAI
-    const systemPrompt = buildSystemPrompt(profile)
+    let systemPrompt = buildSystemPrompt(profile)
+
+    // Append mode-specific instructions
+    if (chat_mode === 'solution') {
+      systemPrompt += `\n\nMODE: SOLUTION-FOCUSED
+The client has indicated they want actionable guidance right now. While still being empathetic and grounded in deep psychology:
+- Lead with practical frameworks, exercises, and concrete next steps
+- Use Socratic questions that move toward clarity and action
+- Offer behavioral experiments, reframes, and specific techniques
+- Still validate first, but move faster toward illumination and tools
+- Structure responses with clear takeaways when appropriate
+- Think CBT behavioral activation, DBT skills, Stoic exercises, motivational interviewing`
+    } else {
+      systemPrompt += `\n\nMODE: DEEP LISTENING & ORIENTING
+The client wants to be heard and understood right now. They're not looking for solutions — they're looking for someone to truly get it:
+- Prioritize reflection, validation, and emotional attunement
+- Sit with them in what they're feeling. Don't rush to fix.
+- Use depth psychology: what's the feeling beneath the feeling?
+- Mirror back with precision: "What I hear underneath all of this is..."
+- Ask the one question that opens the door wider
+- Think psychodynamic, Jungian, humanistic, person-centered`
+    }
     const chatMessages = [
       ...existingMessages,
       ...(isGreeting

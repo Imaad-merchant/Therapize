@@ -3,6 +3,9 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/chat", "destination": "/api/chat" },
+    { "source": "/api/analyze", "destination": "/api/analyze" },
+    { "source": "/api/memories", "destination": "/api/memories" },
+    { "source": "/api/memories/:id", "destination": "/api/memories/[id]" },
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/onboarding", "destination": "/api/onboarding" },
     { "source": "/api/onboarding/complete", "destination": "/api/onboarding/complete" },

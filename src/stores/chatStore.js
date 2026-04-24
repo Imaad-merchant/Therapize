@@ -6,6 +6,11 @@ export const useChatStore = create((set, get) => ({
   streamingContent: '',
   currentSessionId: null,
 
+  // Brain Language state
+  chatMode: 'listening', // 'listening' | 'solution'
+  brainInsights: null, // latest insight snapshot from AI
+  isAnalyzing: false,
+
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
 
@@ -20,11 +25,19 @@ export const useChatStore = create((set, get) => ({
 
   setCurrentSession: (id) => set({ currentSessionId: id }),
 
+  setChatMode: (mode) => set({ chatMode: mode }),
+
+  setBrainInsights: (insights) => set({ brainInsights: insights }),
+
+  setAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
+
   resetChat: () =>
     set({
       messages: [],
       isStreaming: false,
       streamingContent: '',
       currentSessionId: null,
+      brainInsights: null,
+      isAnalyzing: false,
     }),
 }))

@@ -1,0 +1,36 @@
+-- =============================================
+-- Brain Language Persistence Migration
+-- Run this in your Supabase SQL Editor
+-- =============================================
+
+-- Add brain_insights JSONB to sessions (stores latest real-time analysis)
+alter table public.sessions
+  add column if not exists brain_insights jsonb,
+  add column if not exists chat_mode text default 'listening' check (chat_mode in ('listening', 'solution'));
+
+-- Saved memories table (insights users explicitly saved)
+create table if not exists public.saved_memories (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  session_id uuid references public.sessions(id) on delete set null,
+  source_type text not null check (source_type in ('pattern', 'key_insight', 'cognitive_map', 'theme')),
+  payload jsonb not null,
+  note text,
+  created_at timestamptz default now()
+);
+
+-- Indexes
+create index if not exists idx_saved_memories_user_id on public.saved_memories(user_id);
+create index if not exists idx_saved_memories_created_at on public.saved_memories(created_at desc);
+
+-- RLS
+alter table public.saved_memories enable row level security;
+
+create policy "Users can view own saved memories" on public.saved_memories
+  for select using (auth.uid() = user_id);
+create policy "Users can create own saved memories" on public.saved_memories
+  for insert with check (auth.uid() = user_id);
+create policy "Users can update own saved memories" on public.saved_memories
+  for update using (auth.uid() = user_id);
+create policy "Users can delete own saved memories" on public.saved_memories
+  for delete using (auth.uid() = user_id);

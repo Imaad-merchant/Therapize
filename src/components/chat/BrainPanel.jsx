@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useChatStore } from '@/stores/chatStore'
 import { useMemories } from '@/hooks/useMemories'
 import { useAuth } from '@/hooks/useAuth'
@@ -444,51 +446,60 @@ export function BrainPanel() {
           </div>
         </div>
 
-        {/* Sync to Profile CTA */}
-        <motion.button
-          onClick={handleSyncToProfile}
-          disabled={syncing}
-          whileHover={{ scale: syncing ? 1 : 1.01 }}
-          whileTap={{ scale: syncing ? 1 : 0.99 }}
-          className={cn(
-            'w-full relative overflow-hidden rounded-xl border p-3 text-left transition-colors',
-            justSynced
-              ? 'bg-green-500/10 border-green-500/40'
-              : 'bg-gradient-to-br from-primary/10 to-primary/20 border-primary/40 hover:border-primary/60',
-            syncing && 'opacity-70 cursor-wait'
-          )}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              className={cn(
-                'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
-                justSynced ? 'bg-green-500' : 'bg-primary'
-              )}
-            >
-              {syncing ? (
-                <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
-              ) : justSynced ? (
-                <Check className="w-4 h-4 text-white" strokeWidth={3} />
-              ) : (
-                <CircleCheck className="w-4 h-4 text-primary-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold">
-                {justSynced
-                  ? 'Profile Updated'
-                  : syncing
-                    ? 'Syncing to profile...'
-                    : 'Update Master Profile'}
-              </div>
-              <div className="text-[10px] text-muted-foreground truncate">
-                {justSynced
-                  ? 'Insights merged into your profile'
-                  : 'Add these insights to your master psychological profile'}
-              </div>
-            </div>
+        {/* Auto-sync indicator */}
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-green-500/5 border border-green-500/20">
+          <div className="w-4 h-4 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           </div>
-        </motion.button>
+          <span className="text-[10px] text-green-600 dark:text-green-400 font-medium flex-1">
+            Auto-syncing insights to your profile
+          </span>
+        </div>
+
+        {/* LIVE NARRATION — the main conversational analysis */}
+        {insights?.live_narration && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 rounded-xl p-4"
+          >
+            <div className="flex items-center gap-1.5 mb-2.5">
+              <Eye className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                Live Analysis
+              </span>
+            </div>
+            <div className="prose prose-sm max-w-none text-xs leading-relaxed text-foreground/90 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                  em: ({ children }) => <em className="italic text-foreground/95">{children}</em>,
+                  ul: ({ children }) => <ul className="my-2 space-y-1 pl-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="my-2 space-y-1 pl-4 list-decimal">{children}</ol>,
+                  li: ({ children }) => (
+                    <li className="flex gap-2 pl-1">
+                      <span className="text-primary/70 leading-relaxed mt-0.5">•</span>
+                      <span className="flex-1 leading-relaxed">{children}</span>
+                    </li>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="my-2 pl-3 border-l-2 border-primary/40 italic text-foreground/85">
+                      {children}
+                    </blockquote>
+                  ),
+                  h1: ({ children }) => <h4 className="text-sm font-bold mt-3 mb-1.5 first:mt-0">{children}</h4>,
+                  h2: ({ children }) => <h4 className="text-sm font-bold mt-3 mb-1.5 first:mt-0">{children}</h4>,
+                  h3: ({ children }) => <h4 className="text-sm font-bold mt-3 mb-1.5 first:mt-0 text-primary/90">{children}</h4>,
+                  hr: () => <hr className="my-3 border-border/60" />,
+                }}
+              >
+                {insights.live_narration}
+              </ReactMarkdown>
+            </div>
+          </motion.div>
+        )}
 
         {/* Session Trajectory */}
         <AnimatePresence mode="wait">

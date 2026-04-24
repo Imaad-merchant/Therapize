@@ -119,6 +119,14 @@ export default async function handler(req, res) {
       .eq('id', session_id)
       .eq('user_id', user.id)
 
+    // Also save snapshot to history
+    await supabase.from('insight_snapshots').insert({
+      session_id,
+      user_id: user.id,
+      insights,
+      message_count: messages.length,
+    })
+
     res.json(insights)
   } catch (error) {
     console.error('Analyze error:', error)

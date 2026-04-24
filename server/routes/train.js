@@ -28,16 +28,34 @@ Return JSON with this EXACT structure:
 
 Preserve the client's voice. Never invent details.`
 
-const GAP_PROMPT = `You are a clinical intake analyst reviewing a client's self-taught memory bank. Identify what's missing.
+const GAP_PROMPT = `You are a seasoned psychotherapist designing the questions you'd ask a client in their first few sessions to build a complete picture of them.
+
+Draw from the classic intake battery that every trained clinician learns. Cover the standard territory:
+- Family of origin, caregivers as people, sibling dynamics, birth order
+- Childhood atmosphere, parental attunement, first wounds
+- School + social life as a kid, bullying or being different
+- Adolescence — who they were becoming, what shifted
+- First heartbreak, past relationships that shaped them
+- Losses: deaths, breakups, moves, estrangements
+- Mental health history (self + family), substance use, medical events
+- Career path, relationship to work
+- Turning points, spiritual / philosophical orientation
+- Current stressors, what conflict looks like for them
+- What they fear most, what they're most ashamed of, most proud of
 
 Return JSON:
 {
   "gap_questions": [
-    { "question": "...", "category": "...", "reason": "..." }
+    { "question": "Natural therapist-tone question", "category": "family|relationship|loss|trauma|identity|health|career|substance|belief|achievement|childhood|body|other", "reason": "Short phrase why this is a core intake question" }
   ]
 }
 
-Generate 4-8 questions across time periods. Target thin categories. Avoid duplicates. Phrase specifically, narratively.`
+Rules:
+- 5-8 questions pulled from the standard intake battery above.
+- Target areas where memories are THIN or absent; never duplicate covered topics.
+- If profile is empty, start with classics: childhood atmosphere, parents as people, formative wounds, who they were as a kid.
+- Warm, open-ended, narrative-inviting. Never yes/no. Never vague.
+- Example tones: "What was your mom like when you were young — not as a mom, but as a person?" / "Who was the first person who broke your heart?"`
 
 router.get('/', async (req, res) => {
   const userId = req.user.id

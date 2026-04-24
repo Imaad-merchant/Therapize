@@ -125,8 +125,39 @@ Return a JSON object with this EXACT structure:
   },
   "suggested_next_questions": [
     "3-5 questions the AI would naturally want to ask next to deepen understanding, fill timeline gaps, or explore a newly surfaced thread. Each question 8-20 words. Phrased like a therapist would actually say them. These become quick-reply suggestions for the client."
+  ],
+  "auto_captured_memories": [
+    {
+      "text": "A clean first-person restatement of a concrete biographical fact the client mentioned. Example: 'I got bullied in middle school for being quiet — one kid used to take my lunch every day'",
+      "title": "3-6 word title",
+      "category": "family | relationship | loss | trauma | identity | health | career | substance | belief | achievement | childhood | body | other",
+      "subcategory": "Optional specific tag",
+      "emotional_valence": -1 to 1,
+      "emotional_intensity": 0 to 1,
+      "dominant_emotion": "one-word emotion",
+      "estimated_age_at_event": number or null,
+      "time_period": "childhood | adolescence | young_adulthood | adulthood | recent | ongoing | unknown",
+      "people_mentioned": [],
+      "themes": ["3-5 tags"],
+      "connects_to_categories": [],
+      "clinical_significance": "One sentence"
+    }
   ]
 }
+
+AUTO-CAPTURED MEMORIES (extract these like a clinician taking notes):
+Scan the conversation for concrete biographical facts the client shared — events, people, ages, places, relationships, habits, medical/mental health history, turning points. Write each one out in first person as if the client had typed it themselves on the Train AI memory page. These will be automatically saved to their profile WITHOUT them having to manually type them.
+
+Rules for auto_captured_memories:
+- Only capture FACTS the client EXPLICITLY stated. Never infer or invent.
+- First person voice, past tense when appropriate ("I got bullied...", "My dad died when I was 14...")
+- One fact per entry, concrete and specific
+- Skip anything already well-documented in their existing profile/memories (avoid duplicates)
+- Skip vague emotional statements ("I feel bad") — capture concrete biographical data
+- Maximum 3 per analysis — only the most significant, save-worthy ones
+- If no new facts surfaced, return an empty array
+
+This is the core of Sage's ability to build a memory of the client without them having to write everything out. Be a diligent note-taker.
 
 CRITICAL — EVERY FIELD MUST BE POPULATED ON EVERY CALL:
 - live_narration: ALWAYS at least 2 paragraphs, even for very short conversations. If the client has only said "hi", analyze the texture of the greeting (guarded? eager? tentative?), reference anything you know about them from the profile/memories, and speculate about what might emerge.
@@ -213,8 +244,49 @@ export default async function handler(req, res) {
     // Auto-merge profile_updates into the master profile — no button needed
     try {
       const pu = insights.profile_updates
-      if (pu && q) {
-        const mergedQ = autoMergeProfile(q, pu)
+      const captured = Array.isArray(insights.auto_captured_memories)
+        ? insights.auto_captured_memories
+        : []
+      if ((pu && q) || captured.length > 0) {
+        let mergedQ = pu ? autoMergeProfile(q, pu) : { ...q }
+
+        // Append auto-captured memories as if user had typed them on /train
+        if (captured.length > 0) {
+          const existing = mergedQ.user_trained_memories || []
+          const seen = new Set(
+            existing
+              .map((m) => (m.text || '').toLowerCase().slice(0, 80))
+              .filter(Boolean)
+          )
+          const newOnes = captured
+            .filter((c) => c && c.text && c.text.trim().length > 3)
+            .filter((c) => !seen.has((c.text || '').toLowerCase().slice(0, 80)))
+            .map((c) => ({
+              id: crypto.randomUUID(),
+              text: c.text,
+              added_at: new Date().toISOString(),
+              source: 'auto_from_chat',
+              session_id,
+              title: c.title || null,
+              category: c.category || 'other',
+              subcategory: c.subcategory || null,
+              emotional_valence: c.emotional_valence ?? 0,
+              emotional_intensity: c.emotional_intensity ?? 0.5,
+              dominant_emotion: c.dominant_emotion || null,
+              estimated_age_at_event: c.estimated_age_at_event ?? null,
+              time_period: c.time_period || 'unknown',
+              people_mentioned: Array.isArray(c.people_mentioned) ? c.people_mentioned : [],
+              themes: Array.isArray(c.themes) ? c.themes : [],
+              connects_to_categories: Array.isArray(c.connects_to_categories)
+                ? c.connects_to_categories
+                : [],
+              clinical_significance: c.clinical_significance || null,
+            }))
+          if (newOnes.length > 0) {
+            mergedQ.user_trained_memories = [...newOnes, ...existing]
+          }
+        }
+
         await supabase
           .from('profiles')
           .update({

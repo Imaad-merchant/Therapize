@@ -120,8 +120,27 @@ Return a JSON object with this EXACT structure:
   },
   "suggested_next_questions": [
     "3-5 questions the AI would ask to deepen understanding or fill timeline gaps. 8-20 words each. Phrased as a therapist would say them."
+  ],
+  "auto_captured_memories": [
+    {
+      "text": "First-person concrete fact the client stated. Example: 'I got bullied in middle school for being quiet'",
+      "title": "3-6 word title",
+      "category": "family | relationship | loss | trauma | identity | health | career | substance | belief | achievement | childhood | body | other",
+      "subcategory": "Optional",
+      "emotional_valence": -1 to 1,
+      "emotional_intensity": 0 to 1,
+      "dominant_emotion": "one word",
+      "estimated_age_at_event": number or null,
+      "time_period": "childhood | adolescence | young_adulthood | adulthood | recent | ongoing | unknown",
+      "people_mentioned": [],
+      "themes": ["3-5 tags"],
+      "connects_to_categories": [],
+      "clinical_significance": "One sentence"
+    }
   ]
 }
+
+AUTO-CAPTURED MEMORIES: extract concrete biographical facts the client explicitly stated. Write them first-person as if the client typed them on /train. Only facts (events, people, ages, relationships, history). Skip vague emotions. Max 3 per analysis. Empty array if none new.
 
 CRITICAL — EVERY FIELD MUST BE POPULATED ON EVERY CALL:
 - live_narration: ALWAYS at least 2 paragraphs, even for very short conversations.
@@ -207,11 +226,52 @@ router.post('/', async (req, res) => {
       message_count: messages.length,
     })
 
-    // Auto-merge profile_updates into the master profile
+    // Auto-merge profile_updates + auto-captured memories into master profile
     try {
       const pu = insights.profile_updates
-      if (pu && q) {
-        const mergedQ = autoMergeProfile(q, pu)
+      const captured = Array.isArray(insights.auto_captured_memories)
+        ? insights.auto_captured_memories
+        : []
+      if ((pu && q) || captured.length > 0) {
+        let mergedQ = pu ? autoMergeProfile(q, pu) : { ...q }
+
+        if (captured.length > 0) {
+          const existing = mergedQ.user_trained_memories || []
+          const seen = new Set(
+            existing
+              .map((m) => (m.text || '').toLowerCase().slice(0, 80))
+              .filter(Boolean)
+          )
+          const crypto = require('crypto')
+          const newOnes = captured
+            .filter((c) => c && c.text && c.text.trim().length > 3)
+            .filter((c) => !seen.has((c.text || '').toLowerCase().slice(0, 80)))
+            .map((c) => ({
+              id: crypto.randomUUID(),
+              text: c.text,
+              added_at: new Date().toISOString(),
+              source: 'auto_from_chat',
+              session_id,
+              title: c.title || null,
+              category: c.category || 'other',
+              subcategory: c.subcategory || null,
+              emotional_valence: c.emotional_valence ?? 0,
+              emotional_intensity: c.emotional_intensity ?? 0.5,
+              dominant_emotion: c.dominant_emotion || null,
+              estimated_age_at_event: c.estimated_age_at_event ?? null,
+              time_period: c.time_period || 'unknown',
+              people_mentioned: Array.isArray(c.people_mentioned) ? c.people_mentioned : [],
+              themes: Array.isArray(c.themes) ? c.themes : [],
+              connects_to_categories: Array.isArray(c.connects_to_categories)
+                ? c.connects_to_categories
+                : [],
+              clinical_significance: c.clinical_significance || null,
+            }))
+          if (newOnes.length > 0) {
+            mergedQ.user_trained_memories = [...newOnes, ...existing]
+          }
+        }
+
         await supabase
           .from('profiles')
           .update({

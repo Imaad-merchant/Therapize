@@ -31,10 +31,12 @@ import {
 import { cn } from '@/lib/utils'
 
 const EMOTION_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#3b82f6', // blue
+  '#ef4444', // red
 ]
 
 const PATTERN_ICONS = {
@@ -56,39 +58,43 @@ function EmotionSpectrum({ spectrum }) {
   if (!spectrum?.length) return null
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-20 h-20 flex-shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={spectrum}
-              dataKey="value"
-              nameKey="emotion"
-              cx="50%"
-              cy="50%"
-              innerRadius={18}
-              outerRadius={36}
-              strokeWidth={2}
-              stroke="hsl(var(--background))"
-            >
-              {spectrum.map((_, i) => (
-                <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+    <div className="space-y-3">
+      <div className="flex items-center justify-center">
+        <div className="w-28 h-28">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={spectrum}
+                dataKey="value"
+                nameKey="emotion"
+                cx="50%"
+                cy="50%"
+                innerRadius={22}
+                outerRadius={52}
+                strokeWidth={2}
+                stroke="#ffffff"
+              >
+                {spectrum.map((_, i) => (
+                  <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-      <div className="flex-1 space-y-1.5">
+      <div className="space-y-1.5">
         {spectrum.map((item, i) => (
           <div key={item.emotion} className="flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: EMOTION_COLORS[i % EMOTION_COLORS.length] }}
             />
-            <span className="text-xs text-muted-foreground capitalize flex-1">
+            <span className="text-xs text-muted-foreground capitalize flex-1 break-words">
               {item.emotion}
             </span>
-            <span className="text-xs font-medium tabular-nums">{item.value}%</span>
+            <span className="text-xs font-medium tabular-nums flex-shrink-0">
+              {item.value}%
+            </span>
           </div>
         ))}
       </div>
@@ -97,7 +103,6 @@ function EmotionSpectrum({ spectrum }) {
 }
 
 function PatternCard({ pattern, onSave, isSaved }) {
-  const [expanded, setExpanded] = useState(false)
   const Icon = PATTERN_ICONS[pattern.type] || Target
 
   return (
@@ -112,32 +117,28 @@ function PatternCard({ pattern, onSave, isSaved }) {
           <Icon className="w-3.5 h-3.5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold truncate">{pattern.label}</span>
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 flex-shrink-0">
-              {pattern.framework}
-            </Badge>
-          </div>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-[11px] text-muted-foreground mt-0.5 text-left hover:text-foreground transition-colors flex items-center gap-0.5"
-          >
-            {expanded ? pattern.description : pattern.description.slice(0, 60) + (pattern.description.length > 60 ? '...' : '')}
-            {pattern.description.length > 60 && (
-              expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+          <div className="flex items-start gap-1.5 flex-wrap">
+            <span className="text-xs font-semibold break-words">{pattern.label}</span>
+            {pattern.framework && (
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 flex-shrink-0">
+                {pattern.framework}
+              </Badge>
             )}
-          </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed break-words">
+            {pattern.description}
+          </p>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          className="w-6 h-6 flex-shrink-0"
           onClick={() => onSave(pattern)}
         >
           {isSaved ? (
             <BookmarkCheck className="w-3.5 h-3.5 text-primary" />
           ) : (
-            <Bookmark className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
           )}
         </Button>
       </div>
@@ -171,18 +172,18 @@ function KeyInsightCard({ insight, onSave, isSaved }) {
         <Button
           variant="ghost"
           size="icon"
-          className="w-6 h-6 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+          className="w-6 h-6 ml-auto"
           onClick={() => onSave(insight)}
         >
           {isSaved ? (
             <BookmarkCheck className="w-3.5 h-3.5 text-primary" />
           ) : (
-            <Bookmark className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
           )}
         </Button>
       </div>
-      <h4 className="text-sm font-semibold mb-1.5">{insight.title}</h4>
-      <p className="text-xs text-muted-foreground leading-relaxed">{insight.body}</p>
+      <h4 className="text-sm font-semibold mb-1.5 break-words">{insight.title}</h4>
+      <p className="text-xs text-muted-foreground leading-relaxed break-words">{insight.body}</p>
       {insight.quote && (
         <div className="mt-3 pl-3 border-l-2 border-primary/30">
           <p className="text-[11px] italic text-muted-foreground">"{insight.quote}"</p>
@@ -212,11 +213,11 @@ function CognitiveMap({ map }) {
           <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
             <item.icon className="w-3 h-3 text-muted-foreground" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
               {item.label}
             </span>
-            <p className="text-xs leading-relaxed">{item.value}</p>
+            <p className="text-xs leading-relaxed break-words">{item.value}</p>
           </div>
         </div>
       ))}
@@ -259,11 +260,11 @@ function SessionTrajectory({ trajectory }) {
           )}
         />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <span className="text-xs font-semibold">
           {directionLabels[trajectory.direction] || trajectory.direction}
         </span>
-        <p className="text-[11px] text-muted-foreground truncate">{trajectory.note}</p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed break-words">{trajectory.note}</p>
       </div>
     </div>
   )

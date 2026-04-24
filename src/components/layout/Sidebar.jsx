@@ -8,6 +8,7 @@ import {
   LogOut,
   Brain,
   Fingerprint,
+  Bookmark,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -15,6 +16,7 @@ import { Separator } from '@/components/ui/separator'
 const navItems = [
   { to: '/chat', icon: MessageCircle, label: 'Chat' },
   { to: '/profile', icon: Fingerprint, label: 'My Profile' },
+  { to: '/memories', icon: Bookmark, label: 'Saved' },
   { to: '/dashboard', icon: BarChart3, label: 'Dashboard' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]

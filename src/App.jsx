@@ -13,6 +13,7 @@ import Chat from '@/pages/Chat'
 import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
 import Profile from '@/pages/Profile'
+import Memories from '@/pages/Memories'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const queryClient = new QueryClient({
@@ -89,6 +90,7 @@ function AppRoutes() {
             <Route path="/chat/:sessionId" element={<Chat />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/memories" element={<Memories />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

@@ -31,6 +31,7 @@ import {
   Layers,
   MessageCircle,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   Ghost,
   Flame,
@@ -40,6 +41,7 @@ import {
   TrendingDown,
   Users,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -384,10 +386,34 @@ export default function Profile() {
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Back button */}
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/60">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="gap-1.5"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/chat')}
+            className="gap-1.5"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Chat</span>
+          </Button>
+        </div>
+      </div>
+
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
-        <div className="max-w-3xl mx-auto px-4 pt-16 pb-12 relative">
+        <div className="max-w-3xl mx-auto px-4 pt-12 pb-12 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

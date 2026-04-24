@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
 import { ModeToggle } from './ModeToggle'
 import { Button } from '@/components/ui/button'
-import { Brain, Sparkles, Square, PanelRightOpen } from 'lucide-react'
+import { Brain, Sparkles, Square } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 
 export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleBrainPanel, brainPanelOpen }) {
@@ -15,10 +14,7 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
 
   useEffect(() => {
     if (scrollRef.current) {
-      const el = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
-      if (el) {
-        el.scrollTop = el.scrollHeight
-      }
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, streamingContent])
 
@@ -40,9 +36,12 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
+    <div
+      className="h-full w-full grid overflow-hidden"
+      style={{ gridTemplateRows: 'auto 1fr auto' }}
+    >
+      {/* Header — row 1 (auto) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium hidden sm:inline">
@@ -76,8 +75,11 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4">
+      {/* Messages — row 2 (1fr), native scrolling */}
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto overflow-x-hidden p-4 min-h-0"
+      >
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
@@ -96,12 +98,10 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
 
           {isStreaming && !streamingContent && <TypingIndicator />}
         </div>
-      </ScrollArea>
-
-      {/* Input */}
-      <div className="flex-shrink-0">
-        <ChatInput onSend={onSend} disabled={isStreaming || !isSessionActive} />
       </div>
+
+      {/* Input — row 3 (auto), always pinned */}
+      <ChatInput onSend={onSend} disabled={isStreaming || !isSessionActive} />
     </div>
   )
 }

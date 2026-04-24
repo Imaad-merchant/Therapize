@@ -9,7 +9,7 @@ export function AppLayout() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="h-screen flex">
+    <div className="h-[100dvh] flex overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:block w-64 flex-shrink-0">
         <Sidebar />

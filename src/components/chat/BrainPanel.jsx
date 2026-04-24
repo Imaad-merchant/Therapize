@@ -276,6 +276,7 @@ export function BrainPanel() {
   const queryClient = useQueryClient()
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
+  const [changelogData, setChangelogData] = useState(null)
 
   const handleSyncToProfile = async () => {
     if (syncing) return
@@ -297,15 +298,15 @@ export function BrainPanel() {
       if (!res.ok) {
         throw new Error(data.error || `Sync failed (${res.status})`)
       }
-      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
-      queryClient.invalidateQueries({ queryKey: ['profile'] })
+      // Force a hard refetch — not just invalidation — so Profile page updates immediately
+      await queryClient.invalidateQueries({ queryKey: ['profile'] })
+      await queryClient.refetchQueries({ queryKey: ['profile'] })
       setJustSynced(true)
-      toast.success('Profile updated', {
-        description:
-          data.changes_summary ||
-          'Your master profile has been enriched with new insights.',
+      setChangelogData({
+        summary: data.changes_summary,
+        changelog: data.changelog || [],
       })
-      setTimeout(() => setJustSynced(false), 4000)
+      setTimeout(() => setJustSynced(false), 5000)
     } catch (e) {
       console.error('Sync error:', e)
       toast.error('Could not sync to profile', {
@@ -377,6 +378,55 @@ export function BrainPanel() {
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-5">
+        {/* Changelog banner (shows briefly after sync) */}
+        <AnimatePresence>
+          {changelogData && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="relative bg-gradient-to-br from-green-500/10 to-primary/10 border border-green-500/30 rounded-xl p-3.5">
+                <button
+                  onClick={() => setChangelogData(null)}
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-md bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-green-600">
+                    Profile Enriched
+                  </span>
+                </div>
+                {changelogData.summary && (
+                  <p className="text-xs text-muted-foreground mb-2.5 leading-relaxed pr-4">
+                    {changelogData.summary}
+                  </p>
+                )}
+                {changelogData.changelog.length > 0 && (
+                  <div className="space-y-1.5">
+                    {changelogData.changelog.map((c, i) => (
+                      <div key={i} className="flex items-start gap-2 text-[11px]">
+                        <div className="w-1 h-1 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+                        <div>
+                          <span className="font-semibold text-foreground">{c.field}</span>
+                          <span className="text-muted-foreground"> — {c.summary}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Header */}
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />

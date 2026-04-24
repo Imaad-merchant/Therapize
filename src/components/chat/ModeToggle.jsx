@@ -1,10 +1,18 @@
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/stores/chatStore'
-import { Ear, Lightbulb } from 'lucide-react'
+import { Ear, Lightbulb, Swords } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const MODES = [
+  { id: 'listening', label: 'Listen', icon: Ear },
+  { id: 'solution', label: 'Solve', icon: Lightbulb },
+  { id: 'challenger', label: 'Challenge', icon: Swords },
+]
 
 export function ModeToggle() {
   const { chatMode, setChatMode } = useChatStore()
+  const activeIndex = MODES.findIndex((m) => m.id === chatMode)
+  const widthPct = 100 / MODES.length
 
   return (
     <div className="relative flex items-center bg-muted rounded-lg p-0.5 h-8">
@@ -13,30 +21,26 @@ export function ModeToggle() {
         layout
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         style={{
-          width: 'calc(50% - 2px)',
-          left: chatMode === 'listening' ? 2 : 'calc(50%)',
+          width: `calc(${widthPct}% - 2px)`,
+          left: `calc(${widthPct * activeIndex}% + 1px)`,
         }}
       />
-      <button
-        onClick={() => setChatMode('listening')}
-        className={cn(
-          'relative z-10 flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors flex-1 justify-center',
-          chatMode === 'listening' ? 'text-foreground' : 'text-muted-foreground'
-        )}
-      >
-        <Ear className="w-3 h-3" />
-        <span className="hidden sm:inline">Listening</span>
-      </button>
-      <button
-        onClick={() => setChatMode('solution')}
-        className={cn(
-          'relative z-10 flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors flex-1 justify-center',
-          chatMode === 'solution' ? 'text-foreground' : 'text-muted-foreground'
-        )}
-      >
-        <Lightbulb className="w-3 h-3" />
-        <span className="hidden sm:inline">Solutions</span>
-      </button>
+      {MODES.map((m) => {
+        const Icon = m.icon
+        return (
+          <button
+            key={m.id}
+            onClick={() => setChatMode(m.id)}
+            className={cn(
+              'relative z-10 flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] font-medium transition-colors flex-1 justify-center',
+              chatMode === m.id ? 'text-foreground' : 'text-muted-foreground'
+            )}
+          >
+            <Icon className="w-3 h-3" />
+            <span className="hidden sm:inline">{m.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -6,7 +6,16 @@
 -- Add brain_insights JSONB to sessions (stores latest real-time analysis)
 alter table public.sessions
   add column if not exists brain_insights jsonb,
-  add column if not exists chat_mode text default 'listening' check (chat_mode in ('listening', 'solution'));
+  add column if not exists chat_mode text default 'listening';
+
+-- Relax chat_mode constraint to allow challenger mode
+do $$ begin
+  alter table public.sessions drop constraint if exists sessions_chat_mode_check;
+exception when others then null; end $$;
+
+alter table public.sessions
+  add constraint sessions_chat_mode_check
+  check (chat_mode in ('listening', 'solution', 'challenger'));
 
 -- Insight snapshots table (history of brain analysis over time per session)
 create table if not exists public.insight_snapshots (

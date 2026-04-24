@@ -5,26 +5,26 @@ const { openai } = require('../lib/claude')
 
 const MERGE_PROMPT = `You are a clinical psychoanalyst updating a client's master psychological profile with new insights from a recent therapy session.
 
-You are given:
-1. The client's EXISTING profile (their current questionnaire/life context)
-2. NEW brain language insights from the session that just happened
-3. (Optionally) Saved memories the client bookmarked
+You MUST produce visible, substantive updates. A successful sync ALWAYS results in meaningfully enriched content.
 
-Your job: return an UPDATED profile JSON that intelligently merges the new material into the existing profile. Rules:
+RULES:
+1. PRESERVE the entire existing questionnaire structure and keys. Do NOT drop fields.
+2. ENRICH arrays (revelations, core_schemas, defense_mechanisms, strengths, goals, behavioral_patterns, growth_edges, presenting_concerns) — append at least 1-3 new entries per sync based on the session data, unless genuinely nothing new emerged. Never duplicate existing items.
+3. For new revelations, use this shape: { "title": "...", "insight": "...", "evidence": "Exact quote or behavior from session" }.
+4. REFINE narrative fields (life_context_document, personality_archetype, shadow_material, shadow_profile, emotional_fingerprint, inner_world) by weaving in new session observations. These should read DIFFERENTLY after the update, not just longer.
+5. Update relational_patterns, existential_landscape, and attachment_patterns with any new observations.
+6. Recent data wins when contradictions arise.
 
-- PRESERVE existing fields unless there is strong evidence to revise them.
-- ENRICH arrays (revelations, core_schemas, defense_mechanisms, strengths, goals, behavioral_patterns) by APPENDING new items only if they are genuinely new or meaningfully different. Never duplicate.
-- REFINE narrative fields (life_context_document, personality_archetype, shadow_material, emotional_fingerprint) by integrating the new insights — rewrite them to be more accurate and complete, not longer for its own sake.
-- If a new insight contradicts something old, use the new insight (more recent data wins) but keep the explanation grounded.
-- Stay within the EXISTING schema of the profile.
-
-Return a JSON object with this structure:
+Return a JSON object with EXACTLY this structure:
 {
-  "questionnaire": { ...the full updated questionnaire object... },
-  "changes_summary": "2-3 sentence description of what you changed and why"
+  "questionnaire": { ...the full updated questionnaire object with all existing keys preserved and enriched... },
+  "changes_summary": "Specific 2-3 sentence description of what was added/revised",
+  "changelog": [
+    { "field": "revelations", "change": "added", "summary": "Added revelation about X" }
+  ]
 }
 
-The questionnaire should match the existing structure exactly — same keys, same nested shape. Fill gaps where the new insights reveal something the profile didn't capture.`
+CRITICAL: Your changelog should list 3-8 specific changes. If you cannot find 3 changes to make, you are not looking hard enough at the session data.`
 
 router.post('/', async (req, res) => {
   const userId = req.user.id
@@ -137,6 +137,7 @@ router.post('/', async (req, res) => {
     res.json({
       success: true,
       changes_summary: result.changes_summary,
+      changelog: result.changelog || [],
       updated_at: new Date().toISOString(),
     })
   } catch (error) {

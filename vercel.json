@@ -1,0 +1,13 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/chat", "destination": "/api/chat" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/onboarding", "destination": "/api/onboarding" },
+    { "source": "/api/onboarding/complete", "destination": "/api/onboarding/complete" },
+    { "source": "/api/insights/session-summary", "destination": "/api/insights/session-summary" },
+    { "source": "/api/insights/personality", "destination": "/api/insights/personality" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

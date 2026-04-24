@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useProfile } from '@/hooks/useProfile'
+import { DEMO_PROFILE } from '@/lib/demo-profile'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -101,9 +102,12 @@ function RevealCard({ title, insight, evidence, index }) {
 export default function Profile() {
   const { profile, isLoading } = useProfile()
   const navigate = useNavigate()
-  const q = profile?.questionnaire || {}
+  const [searchParams] = useSearchParams()
+  const isDemo = searchParams.get('demo') === 'true'
+  const activeProfile = isDemo ? DEMO_PROFILE : profile
+  const q = activeProfile?.questionnaire || {}
 
-  if (isLoading) {
+  if (isLoading && !isDemo) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5">
         <div className="text-center space-y-4">
@@ -159,7 +163,7 @@ export default function Profile() {
             )}
 
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-              {profile?.display_name
+              {activeProfile?.display_name
                 ? `${profile.display_name}, This Is You`
                 : 'This Is You'}
             </h1>

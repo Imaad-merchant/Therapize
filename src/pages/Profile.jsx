@@ -346,6 +346,64 @@ function VisualSummary({ q }) {
   )
 }
 
+// ============================================================================
+// TRAINED MEMORIES — things the user told Sage to remember
+// ============================================================================
+function TrainedMemoriesSection({ q, onNavigate }) {
+  const memories = q.user_trained_memories || []
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      whileInView="animate"
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.4 }}
+    >
+      <Card className="p-5 border-primary/30 bg-gradient-to-br from-primary/5 to-card">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold">Things You've Told Sage</h3>
+              <p className="text-xs text-muted-foreground">
+                {memories.length > 0
+                  ? `Sage references these whenever they're relevant`
+                  : 'Teach Sage things about you — and it will remember forever'}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant={memories.length > 0 ? 'outline' : 'default'} onClick={onNavigate} className="gap-1.5 flex-shrink-0">
+            <Sparkles className="w-3.5 h-3.5" />
+            {memories.length > 0 ? 'Manage' : 'Train AI'}
+          </Button>
+        </div>
+        {memories.length > 0 ? (
+          <ul className="space-y-1.5 pt-1">
+            {memories.slice(0, 4).map((m) => (
+              <li key={m.id} className="flex items-start gap-2 text-xs">
+                <span className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                <span className="text-muted-foreground leading-relaxed line-clamp-2">{m.text}</span>
+              </li>
+            ))}
+            {memories.length > 4 && (
+              <li className="text-[11px] text-primary pl-3">
+                + {memories.length - 4} more
+              </li>
+            )}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground italic pt-1">
+            Example: "My dad died when I was 12 — I still avoid Father's Day" — Sage will weave it into every future conversation.
+          </p>
+        )}
+      </Card>
+    </motion.div>
+  )
+}
+
 export default function Profile() {
   const { profile, isLoading } = useProfile()
   const navigate = useNavigate()
@@ -463,6 +521,9 @@ export default function Profile() {
       <div className="max-w-3xl mx-auto px-4 pb-20 space-y-6">
         {/* At-a-glance visual summary */}
         <VisualSummary q={q} />
+
+        {/* Train AI card + user-trained memories */}
+        <TrainedMemoriesSection q={q} onNavigate={() => navigate('/train')} />
 
         {/* Life Context */}
         {q.life_context_document && (
@@ -853,6 +914,55 @@ export default function Profile() {
           </Section>
         )}
 
+        {/* Session Notes — auto-synced from each chat */}
+        {q.session_notes?.length > 0 && (
+          <Section icon={MessageCircle} title="Session Notes" delay={0.1}>
+            <p className="text-xs text-muted-foreground mb-3">
+              Auto-captured reflections from each of your conversations
+            </p>
+            <div className="space-y-2">
+              {q.session_notes
+                .slice()
+                .reverse()
+                .slice(0, 8)
+                .map((n, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/30 border border-border/40">
+                    <div className="w-1 rounded-full bg-primary/40 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm leading-relaxed">{typeof n === 'string' ? n : n.note}</p>
+                      {typeof n !== 'string' && n.at && (
+                        <span className="text-[10px] text-muted-foreground mt-1.5 block">
+                          {new Date(n.at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Quick history notes if any */}
+        {q.history_notes?.length > 0 && (
+          <Section icon={Lock} title="Your Story Threads" delay={0.1}>
+            <p className="text-xs text-muted-foreground mb-3">
+              Pieces of your past that keep surfacing in sessions
+            </p>
+            <ul className="space-y-1.5">
+              {q.history_notes.slice(0, 12).map((h, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="text-primary/60 mt-1">◆</span>
+                  <span className="leading-relaxed">{h}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
         {/* CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -867,18 +977,27 @@ export default function Profile() {
               This is your starting point
             </h3>
             <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Sage now understands you at a level most people never reach with a
-              therapist in the first session. Every conversation from here is
-              built on this foundation.
+              Every conversation adds more. Sage auto-updates this profile as you talk.
             </p>
-            <Button
-              size="lg"
-              onClick={() => navigate('/chat')}
-              className="gap-2 mt-4"
-            >
-              Begin Your First Session
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+              <Button
+                size="lg"
+                onClick={() => navigate('/chat')}
+                className="gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Start a session
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => navigate('/train')}
+                className="gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Train Sage
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>

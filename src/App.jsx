@@ -14,6 +14,7 @@ import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
 import Profile from '@/pages/Profile'
 import Memories from '@/pages/Memories'
+import Train from '@/pages/Train'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const queryClient = new QueryClient({
@@ -91,6 +92,7 @@ function AppRoutes() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/memories" element={<Memories />} />
+            <Route path="/train" element={<Train />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

@@ -1,5 +1,6 @@
 import { supabase } from './_lib/supabase.js'
 import { buildSystemPrompt, createChatStream, openai } from './_lib/claude.js'
+import { buildPersonaPrompt } from './_lib/personas.js'
 import { verifyAuth } from './_middleware/auth.js'
 
 export const config = {
@@ -16,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const { session_id, message, chat_mode } = req.body
+  const { session_id, message, chat_mode, persona_id } = req.body
   if (!session_id || !message) {
     return res.status(400).json({ error: 'session_id and message are required' })
   }
@@ -45,15 +46,22 @@ export default async function handler(req, res) {
       })
     }
 
-    if (chat_mode) {
+    const sessionUpdates = {}
+    if (chat_mode) sessionUpdates.chat_mode = chat_mode
+    if (persona_id) sessionUpdates.persona_id = persona_id
+    if (Object.keys(sessionUpdates).length > 0) {
       await supabase
         .from('sessions')
-        .update({ chat_mode })
+        .update(sessionUpdates)
         .eq('id', session_id)
         .eq('user_id', user.id)
     }
 
     let systemPrompt = buildSystemPrompt(profile)
+
+    if (persona_id && persona_id !== 'sage') {
+      systemPrompt += buildPersonaPrompt(persona_id)
+    }
 
     if (chat_mode === 'solution') {
       systemPrompt += `\n\nMODE: SOLUTION-FOCUSED

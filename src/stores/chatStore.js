@@ -7,7 +7,8 @@ export const useChatStore = create((set, get) => ({
   currentSessionId: null,
 
   // Brain Language state
-  chatMode: 'listening', // 'listening' | 'solution'
+  chatMode: 'listening', // 'listening' | 'solution' | 'challenger'
+  personaId: 'sage',
   brainInsights: null, // latest insight snapshot from AI
   isAnalyzing: false,
 
@@ -26,6 +27,8 @@ export const useChatStore = create((set, get) => ({
   setCurrentSession: (id) => set({ currentSessionId: id }),
 
   setChatMode: (mode) => set({ chatMode: mode }),
+
+  setPersonaId: (personaId) => set({ personaId }),
 
   setBrainInsights: (insights) => set({ brainInsights: insights }),
 

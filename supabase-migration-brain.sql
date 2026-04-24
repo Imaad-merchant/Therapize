@@ -6,7 +6,8 @@
 -- Add brain_insights JSONB to sessions (stores latest real-time analysis)
 alter table public.sessions
   add column if not exists brain_insights jsonb,
-  add column if not exists chat_mode text default 'listening';
+  add column if not exists chat_mode text default 'listening',
+  add column if not exists persona_id text default 'sage';
 
 -- Relax chat_mode constraint to allow challenger mode
 do $$ begin

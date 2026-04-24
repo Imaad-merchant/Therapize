@@ -3,6 +3,8 @@ import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { TypingIndicator } from './TypingIndicator'
 import { ModeToggle } from './ModeToggle'
+import { PersonaBadge } from './PersonaBadge'
+import { WelcomeGallery } from './WelcomeGallery'
 import { Button } from '@/components/ui/button'
 import { Brain, Sparkles, Square } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
@@ -19,20 +21,7 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
   }, [messages, streamingContent])
 
   if (!currentSessionId) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md px-4">
-          <div className="mx-auto w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Brain className="w-10 h-10 text-primary" />
-          </div>
-          <h2 className="text-xl font-semibold">Welcome to Sage</h2>
-          <p className="text-muted-foreground">
-            Start a new session to begin your conversation. Sage is here to
-            listen, guide, and support you on your wellness journey.
-          </p>
-        </div>
-      </div>
-    )
+    return <WelcomeGallery />
   }
 
   return (
@@ -41,13 +30,8 @@ export function ChatContainer({ onSend, onEndSession, isSessionActive, onToggleB
       style={{ gridTemplateRows: 'auto 1fr auto' }}
     >
       {/* Header — row 1 (auto) */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur gap-2">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium hidden sm:inline">
-            Session in progress
-          </span>
-        </div>
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-background/80 backdrop-blur gap-2">
+        <PersonaBadge />
 
         <ModeToggle />
 

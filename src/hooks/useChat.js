@@ -11,6 +11,7 @@ export function useChat() {
     streamingContent,
     currentSessionId,
     chatMode,
+    personaId,
     brainInsights,
     isAnalyzing,
     addMessage,
@@ -23,6 +24,7 @@ export function useChat() {
     setBrainInsights,
     setAnalyzing,
     setChatMode,
+    setPersonaId,
   } = useChatStore()
 
   const { getAccessToken, user } = useAuth()
@@ -82,6 +84,7 @@ export function useChat() {
           session_id: currentSessionId,
           message: content,
           chat_mode: chatMode,
+          persona_id: personaId,
         }),
       })
 
@@ -174,6 +177,7 @@ export function useChat() {
           session_id: session.id,
           message: '__GREETING__',
           chat_mode: chatMode,
+          persona_id: personaId,
         }),
       })
 
@@ -262,7 +266,7 @@ export function useChat() {
     try {
       const { data: sessionRow } = await supabase
         .from('sessions')
-        .select('brain_insights, chat_mode')
+        .select('brain_insights, chat_mode, persona_id')
         .eq('id', sessionId)
         .single()
 
@@ -271,6 +275,9 @@ export function useChat() {
       }
       if (sessionRow?.chat_mode) {
         setChatMode(sessionRow.chat_mode)
+      }
+      if (sessionRow?.persona_id) {
+        setPersonaId(sessionRow.persona_id)
       }
     } catch (e) {
       console.error('Session load error:', e)

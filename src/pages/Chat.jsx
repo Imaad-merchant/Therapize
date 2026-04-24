@@ -6,6 +6,8 @@ import { useMessages } from '@/hooks/useMessages'
 import { ChatContainer } from '@/components/chat/ChatContainer'
 import { SessionList } from '@/components/chat/SessionList'
 import { BrainPanel } from '@/components/chat/BrainPanel'
+import { PersonaPicker } from '@/components/chat/PersonaPicker'
+import { useChatStore } from '@/stores/chatStore'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { PanelLeftOpen, Brain, X } from 'lucide-react'
@@ -26,6 +28,8 @@ export default function Chat() {
   const [sessionListOpen, setSessionListOpen] = useState(false)
   const [brainPanelOpen, setBrainPanelOpen] = useState(true)
   const [mobileBrainOpen, setMobileBrainOpen] = useState(false)
+  const [personaPickerOpen, setPersonaPickerOpen] = useState(false)
+  const { personaId, setPersonaId } = useChatStore()
 
   // Load session whenever URL sessionId changes — even if messages are empty
   useEffect(() => {
@@ -43,10 +47,20 @@ export default function Chat() {
 
   const handleNewSession = async () => {
     setSessionListOpen(false)
-    const session = await startNewSession()
-    if (session?.id) {
-      navigate(`/chat/${session.id}`)
-    }
+    // Open persona picker first — user selects then we create the session
+    setPersonaPickerOpen(true)
+  }
+
+  const handlePersonaPickedAndStart = async (pickedId) => {
+    setPersonaId(pickedId)
+    setPersonaPickerOpen(false)
+    // Small delay so Zustand state flushes before the API call
+    setTimeout(async () => {
+      const session = await startNewSession()
+      if (session?.id) {
+        navigate(`/chat/${session.id}`)
+      }
+    }, 50)
   }
 
   const handleToggleBrainPanel = () => {
@@ -124,6 +138,15 @@ export default function Chat() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Persona picker for new sessions */}
+      <PersonaPicker
+        open={personaPickerOpen}
+        onOpenChange={setPersonaPickerOpen}
+        currentPersonaId={personaId}
+        onSelect={handlePersonaPickedAndStart}
+        title="Choose your therapist for this session"
+      />
 
       {/* Mobile Brain Language sheet */}
       <Sheet open={mobileBrainOpen} onOpenChange={setMobileBrainOpen}>

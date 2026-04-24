@@ -2,9 +2,10 @@ const express = require('express')
 const router = express.Router()
 const { supabase } = require('../lib/supabase')
 const { buildSystemPrompt, createChatCompletion, openai } = require('../lib/claude')
+const { buildPersonaPrompt } = require('../lib/personas')
 
 router.post('/', async (req, res) => {
-  const { session_id, message, chat_mode } = req.body
+  const { session_id, message, chat_mode, persona_id } = req.body
   const userId = req.user.id
 
   if (!session_id || !message) {
@@ -38,17 +39,25 @@ router.post('/', async (req, res) => {
       })
     }
 
-    // Persist chat mode on session
-    if (chat_mode) {
+    // Persist chat mode + persona on session
+    const sessionUpdates = {}
+    if (chat_mode) sessionUpdates.chat_mode = chat_mode
+    if (persona_id) sessionUpdates.persona_id = persona_id
+    if (Object.keys(sessionUpdates).length > 0) {
       await supabase
         .from('sessions')
-        .update({ chat_mode })
+        .update(sessionUpdates)
         .eq('id', session_id)
         .eq('user_id', userId)
     }
 
     // Build messages for OpenAI
     let systemPrompt = buildSystemPrompt(profile)
+
+    // Inject persona specialist training
+    if (persona_id && persona_id !== 'sage') {
+      systemPrompt += buildPersonaPrompt(persona_id)
+    }
 
     // Append mode-specific instructions
     if (chat_mode === 'solution') {

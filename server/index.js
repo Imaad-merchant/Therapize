@@ -9,6 +9,7 @@ const onboardingRoutes = require('./routes/onboarding')
 const analyzeRoutes = require('./routes/analyze')
 const memoriesRoutes = require('./routes/memories')
 const profileSyncRoutes = require('./routes/profile-sync')
+const trainRoutes = require('./routes/train')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -28,6 +29,7 @@ app.use('/api/onboarding', authMiddleware, onboardingRoutes)
 app.use('/api/analyze', authMiddleware, analyzeRoutes)
 app.use('/api/memories', authMiddleware, memoriesRoutes)
 app.use('/api/profile/sync', authMiddleware, profileSyncRoutes)
+app.use('/api/train', authMiddleware, trainRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })

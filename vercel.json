@@ -7,6 +7,7 @@
     { "source": "/api/memories", "destination": "/api/memories" },
     { "source": "/api/memories/:id", "destination": "/api/memories/[id]" },
     { "source": "/api/profile/sync", "destination": "/api/profile/sync" },
+    { "source": "/api/train", "destination": "/api/train" },
     { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/onboarding", "destination": "/api/onboarding" },
     { "source": "/api/onboarding/complete", "destination": "/api/onboarding/complete" },

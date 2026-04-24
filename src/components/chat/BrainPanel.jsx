@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useChatStore } from '@/stores/chatStore'
 import { useMemories } from '@/hooks/useMemories'
+import { useAuth } from '@/hooks/useAuth'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +25,8 @@ import {
   Heart,
   AlertTriangle,
   TrendingUp,
+  Check,
+  CircleCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -267,6 +272,43 @@ function SessionTrajectory({ trajectory }) {
 export function BrainPanel() {
   const { brainInsights, isAnalyzing, currentSessionId } = useChatStore()
   const { memories, saveMemory } = useMemories()
+  const { getAccessToken } = useAuth()
+  const queryClient = useQueryClient()
+  const [syncing, setSyncing] = useState(false)
+  const [justSynced, setJustSynced] = useState(false)
+
+  const handleSyncToProfile = async () => {
+    if (syncing) return
+    setSyncing(true)
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/profile/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ session_id: currentSessionId }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Sync failed')
+      }
+      const data = await res.json()
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+      setJustSynced(true)
+      toast.success('Profile updated', {
+        description: data.changes_summary || 'Your master profile has been enriched with new insights.',
+      })
+      setTimeout(() => setJustSynced(false), 3000)
+    } catch (e) {
+      toast.error('Could not sync to profile', {
+        description: e.message,
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   // Check if insight is already saved by matching payload identity
   const isPatternSaved = (patternId) =>
@@ -333,15 +375,63 @@ export function BrainPanel() {
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-bold">Brain Language</h3>
-          {isAnalyzing && (
-            <Loader2 className="w-3 h-3 text-primary animate-spin ml-auto" />
-          )}
-          {memories.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] ml-auto">
-              {memories.length} saved
-            </Badge>
-          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            {isAnalyzing && (
+              <Loader2 className="w-3 h-3 text-primary animate-spin" />
+            )}
+            {memories.length > 0 && (
+              <Badge variant="secondary" className="text-[10px]">
+                {memories.length} saved
+              </Badge>
+            )}
+          </div>
         </div>
+
+        {/* Sync to Profile CTA */}
+        <motion.button
+          onClick={handleSyncToProfile}
+          disabled={syncing || !insights}
+          whileHover={{ scale: syncing || !insights ? 1 : 1.01 }}
+          whileTap={{ scale: syncing || !insights ? 1 : 0.99 }}
+          className={cn(
+            'w-full relative overflow-hidden rounded-xl border p-3 text-left transition-colors',
+            justSynced
+              ? 'bg-green-500/10 border-green-500/40'
+              : 'bg-gradient-to-br from-primary/5 to-primary/10 border-primary/30 hover:border-primary/50',
+            (syncing || !insights) && 'opacity-60 cursor-not-allowed'
+          )}
+        >
+          <div className="flex items-center gap-2.5">
+            <div
+              className={cn(
+                'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                justSynced ? 'bg-green-500' : 'bg-primary'
+              )}
+            >
+              {syncing ? (
+                <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
+              ) : justSynced ? (
+                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+              ) : (
+                <CircleCheck className="w-4 h-4 text-primary-foreground" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold">
+                {justSynced
+                  ? 'Profile Updated'
+                  : syncing
+                    ? 'Syncing to profile...'
+                    : 'Update Master Profile'}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                {justSynced
+                  ? 'Insights merged into your profile'
+                  : 'Add these insights to your master psychological profile'}
+              </div>
+            </div>
+          </div>
+        </motion.button>
 
         {/* Session Trajectory */}
         <AnimatePresence mode="wait">

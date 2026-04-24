@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/stores/chatStore'
-import { Ear, Lightbulb, Swords } from 'lucide-react'
+import { Ear, Lightbulb, Swords, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const MODES = [
   { id: 'listening', label: 'Listen', icon: Ear },
   { id: 'solution', label: 'Solve', icon: Lightbulb },
   { id: 'challenger', label: 'Challenge', icon: Swords },
+  { id: 'all', label: 'All', icon: Sparkles },
 ]
 
 export function ModeToggle() {

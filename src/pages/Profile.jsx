@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  RadialBarChart,
+  RadialBar,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+} from 'recharts'
 import { useProfile } from '@/hooks/useProfile'
 import { DEMO_PROFILE } from '@/lib/demo-profile'
 import { Card } from '@/components/ui/card'
@@ -23,8 +36,14 @@ import {
   Flame,
   Lock,
   Star,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const CHART_COLORS = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444']
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -99,6 +118,232 @@ function RevealCard({ title, insight, evidence, index }) {
   )
 }
 
+// ============================================================================
+// VISUAL SUMMARY — At a glance charts and comparables
+// ============================================================================
+function VisualSummary({ q }) {
+  // Build emotional mix from dominant + suppressed
+  const dominant = q.emotional_fingerprint?.dominant_emotions || []
+  const suppressed = q.emotional_fingerprint?.suppressed_emotions || []
+
+  const emotionPie = [
+    ...dominant.slice(0, 3).map((e, i) => ({ name: e, value: 30 - i * 5 })),
+    ...(suppressed[0] ? [{ name: `${suppressed[0]} (suppressed)`, value: 15 }] : []),
+  ]
+  const hasEmotionData = emotionPie.length > 0
+
+  // Attachment breakdown — estimated mix
+  const attachStyle = q.attachment_patterns?.primary_style?.toLowerCase() || ''
+  const attachmentData = attachStyle
+    ? [
+        { name: 'Secure', value: attachStyle.includes('secure') ? 70 : attachStyle.includes('anxious-secure') ? 45 : 20 },
+        { name: 'Anxious', value: attachStyle.includes('anxious') ? 55 : attachStyle.includes('disorganized') ? 40 : 15 },
+        { name: 'Avoidant', value: attachStyle.includes('avoidant') || attachStyle.includes('dismissive') ? 60 : attachStyle.includes('disorganized') ? 35 : 15 },
+        { name: 'Disorganized', value: attachStyle.includes('disorganized') ? 50 : 10 },
+      ]
+    : null
+
+  // Radar — personality dimensions
+  const radarData = [
+    { trait: 'Openness', value: (q.strengths || []).length * 15 + 30 },
+    { trait: 'Resilience', value: (q.strengths || []).length * 12 + 40 },
+    { trait: 'Self-Awareness', value: (q.revelations || []).length * 10 + 30 },
+    { trait: 'Vulnerability', value: q.relational_patterns?.vulnerability_capacity ? 55 : 35 },
+    { trait: 'Growth Edge', value: (q.growth_edges || []).length * 12 + 35 },
+    { trait: 'Shadow Integration', value: q.shadow_profile ? 45 : 25 },
+  ].map((d) => ({ ...d, value: Math.min(d.value, 95) }))
+
+  // Quick stats cards
+  const stats = [
+    { icon: Eye, label: 'Revelations', value: q.revelations?.length || 0, color: 'text-violet-500' },
+    { icon: Lock, label: 'Core Schemas', value: q.core_schemas?.length || 0, color: 'text-rose-500' },
+    { icon: Shield, label: 'Defenses', value: q.defense_mechanisms?.length || 0, color: 'text-amber-500' },
+    { icon: Star, label: 'Strengths', value: q.strengths?.length || 0, color: 'text-emerald-500' },
+  ]
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      whileInView="animate"
+      viewport={{ once: true, margin: '-50px' }}
+      transition={{ duration: 0.5 }}
+      className="space-y-4"
+    >
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map((s, i) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.05 }}
+          >
+            <Card className="p-4 flex items-center gap-3">
+              <div className={cn('w-9 h-9 rounded-lg bg-muted flex items-center justify-center', s.color)}>
+                <s.icon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none">{s.value}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{s.label}</div>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Emotional mix pie */}
+        {hasEmotionData && (
+          <Card className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Flame className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold">Emotional Mix</h4>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-28 h-28 flex-shrink-0">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={emotionPie}
+                      dataKey="value"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={26}
+                      outerRadius={50}
+                      strokeWidth={2}
+                      stroke="hsl(var(--background))"
+                    >
+                      {emotionPie.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-1.5">
+                {emotionPie.map((e, i) => (
+                  <div key={e.name} className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
+                    <span className="text-xs text-muted-foreground capitalize flex-1 truncate">{e.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Personality radar */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-semibold">Psychological Profile</h4>
+          </div>
+          <div className="w-full h-40">
+            <ResponsiveContainer>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="hsl(var(--border))" />
+                <PolarAngleAxis
+                  dataKey="trait"
+                  tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <Radar
+                  dataKey="value"
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--primary))"
+                  fillOpacity={0.35}
+                  strokeWidth={2}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      {/* Attachment breakdown */}
+      {attachmentData && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Heart className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold">Attachment Mix</h4>
+            </div>
+            <Badge variant="secondary" className="text-[10px] capitalize">
+              Primary: {q.attachment_patterns?.primary_style}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {attachmentData.map((a, i) => (
+              <div key={a.name}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium">{a.name}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{a.value}%</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${a.value}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: i * 0.1, ease: 'easeOut' }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: CHART_COLORS[i] }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
+            Attachment isn't a single label — it's a <strong className="text-foreground">mix</strong>. Most people lean into one style but carry threads of others depending on the relationship.
+          </p>
+        </Card>
+      )}
+
+      {/* Strengths vs Growth Edges side by side */}
+      {(q.strengths?.length > 0 || q.growth_edges?.length > 0) && (
+        <div className="grid md:grid-cols-2 gap-3">
+          {q.strengths?.length > 0 && (
+            <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-600">What You Have</h4>
+              </div>
+              <ul className="space-y-1.5">
+                {q.strengths.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="text-emerald-500 mt-0.5">✓</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {q.growth_edges?.length > 0 && (
+            <Card className="p-4 border-primary/30 bg-primary/5">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingDown className="w-4 h-4 text-primary" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Where To Grow</h4>
+              </div>
+              <ul className="space-y-1.5">
+                {q.growth_edges.map((g, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="text-primary mt-0.5">↗</span>
+                    <span>{g}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 export default function Profile() {
   const { profile, isLoading } = useProfile()
   const navigate = useNavigate()
@@ -138,7 +383,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5">
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
@@ -190,6 +435,9 @@ export default function Profile() {
 
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 pb-20 space-y-6">
+        {/* At-a-glance visual summary */}
+        <VisualSummary q={q} />
+
         {/* Life Context */}
         {q.life_context_document && (
           <Section icon={Brain} title="Your Story" delay={0.1}>
@@ -578,35 +826,6 @@ export default function Profile() {
             </div>
           </Section>
         )}
-
-        {/* Strengths & Growth */}
-        <div className="grid md:grid-cols-2 gap-4">
-          {q.strengths?.length > 0 && (
-            <Section icon={Star} title="Your Strengths">
-              <div className="space-y-2">
-                {q.strengths.map((s, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0" />
-                    <p className="text-sm">{s}</p>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {q.growth_edges?.length > 0 && (
-            <Section icon={Sparkles} title="Growth Edges">
-              <div className="space-y-2">
-                {q.growth_edges.map((g, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                    <p className="text-sm">{g}</p>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-        </div>
 
         {/* CTA */}
         <motion.div

@@ -117,18 +117,32 @@ Return a JSON object with this EXACT structure:
     "growth_edges_observed": ["..."],
     "history_clues": ["Any past detail they mentioned worth saving to their life story"],
     "notes_for_master_profile": "2-3 sentence summary of what should be added to this person's master psychological profile based on THIS conversation — phrased in the same tone as the existing profile."
-  }
+  },
+  "suggested_next_questions": [
+    "3-5 questions the AI would ask to deepen understanding or fill timeline gaps. 8-20 words each. Phrased as a therapist would say them."
+  ]
 }
 
+CRITICAL — EVERY FIELD MUST BE POPULATED ON EVERY CALL:
+- live_narration: ALWAYS at least 2 paragraphs, even for very short conversations.
+- emotional_state: ALWAYS all 4 emotions summing to 100.
+- active_patterns: ALWAYS at least 2 items.
+- themes: ALWAYS at least 3.
+- key_insight: ALWAYS present.
+- cognitive_map: ALWAYS all four fields.
+- session_trajectory: ALWAYS a direction.
+- profile_updates: ALWAYS populate.
+
+Never return null, empty strings, or empty arrays. When data is thin, lean on the profile context. When profile is thin, lean on psychological priors.
+
 RULES:
-- The live_narration is the star — make it the richest, most human part. Specific. Thoughtful. Conversational.
-- Be SPECIFIC to what was actually said. No generic psychology.
+- The live_narration is the star — rich, specific, conversational.
+- Be SPECIFIC to what was said. Reference direct quotes when possible.
 - Emotional spectrum has exactly 4 emotions summing to 100.
-- Active patterns: 2-4 items max.
-- Apply the 5-step protocol: gather, identify patterns, apply theory silently, draw insights, offer targeted reflection.
+- Minimum 2 active patterns.
+- Apply the 5-step protocol silently.
 - Use deep frameworks: Jungian shadow, attachment, schema therapy, existential, IFS, object relations.
-- profile_updates must be populated on every call — even thin observations count. They will be automatically merged into the master profile.
-- Even short conversations reveal something. Work with what you have.`
+- profile_updates will be auto-merged into the master profile.`
 
 router.post('/', async (req, res) => {
   const { session_id } = req.body

@@ -28,6 +28,56 @@ Return JSON with this EXACT structure:
 
 Preserve the client's voice. Never invent details.`
 
+const GAP_PROMPT = `You are a clinical intake analyst reviewing a client's self-taught memory bank. Identify what's missing.
+
+Return JSON:
+{
+  "gap_questions": [
+    { "question": "...", "category": "...", "reason": "..." }
+  ]
+}
+
+Generate 4-8 questions across time periods. Target thin categories. Avoid duplicates. Phrase specifically, narratively.`
+
+router.get('/', async (req, res) => {
+  const userId = req.user.id
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('questionnaire, display_name')
+      .eq('id', userId)
+      .single()
+
+    const q = profile?.questionnaire || {}
+    const memories = q.user_trained_memories || []
+    const summary = memories.map((m) => ({
+      title: m.title,
+      category: m.category,
+      time_period: m.time_period,
+      age: m.estimated_age_at_event,
+      themes: m.themes,
+    }))
+
+    const r = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 800,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: GAP_PROMPT },
+        {
+          role: 'user',
+          content: `Client profile:\n${q.life_context_document ? q.life_context_document.slice(0, 2000) : '(none)'}\n\nMemories (${memories.length}):\n${JSON.stringify(summary, null, 2)}`,
+        },
+      ],
+    })
+    const parsed = JSON.parse(r.choices[0].message.content)
+    res.json(parsed)
+  } catch (e) {
+    console.error('Gap questions error:', e)
+    res.status(500).json({ error: e.message })
+  }
+})
+
 router.post('/', async (req, res) => {
   const userId = req.user.id
   const { text } = req.body

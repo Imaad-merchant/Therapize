@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -9,10 +9,6 @@ import { cn } from '@/lib/utils'
   Ring 2: the memory nodes themselves, orbiting their category.
   Edges: lines from center → category → memories, plus cross-edges to
   'connects_to_categories'.
-
-  Fully responsive SVG that auto-fits. Node click opens a side panel
-  with full detail. Hover shows themes. Drag the canvas to pan,
-  scroll-wheel zooms.
 */
 
 const CATEGORY_META = {
@@ -35,44 +31,101 @@ function polar(cx, cy, r, angleRad) {
   return [cx + Math.cos(angleRad) * r, cy + Math.sin(angleRad) * r]
 }
 
-export function MindMap({ memories, userName }) {
+class MindMapBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { err: null }
+  }
+  static getDerivedStateFromError(err) {
+    return { err }
+  }
+  componentDidCatch(err, info) {
+    console.error('MindMap crash:', err, info)
+  }
+  render() {
+    if (this.state.err) {
+      return (
+        <div className="h-64 flex items-center justify-center border border-dashed rounded-xl text-center p-6">
+          <div>
+            <p className="text-sm font-medium">Mind map failed to render</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+              The underlying data is safe — try reloading or switching to another view.
+            </p>
+            <button
+              onClick={() => this.setState({ err: null })}
+              className="mt-3 text-xs underline text-primary"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+function MindMapInner({ memories, userName, height = 520 }) {
   const containerRef = useRef(null)
-  const [size, setSize] = useState({ w: 900, h: 600 })
+  const [size, setSize] = useState({ w: 900, h: height })
   const [selected, setSelected] = useState(null)
   const [hovered, setHovered] = useState(null)
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 })
   const dragState = useRef(null)
 
+  // Resize observer — debounced, with guard against feedback loops
   useEffect(() => {
-    if (!containerRef.current) return
+    const el = containerRef.current
+    if (!el) return
+    let rafId = null
     const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        setSize({
-          w: Math.max(400, e.contentRect.width),
-          h: Math.max(400, Math.min(900, e.contentRect.width * 0.7)),
-        })
-      }
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        for (const e of entries) {
+          const w = Math.max(320, Math.floor(e.contentRect.width))
+          setSize((prev) => (prev.w === w ? prev : { w, h: height }))
+        }
+      })
     })
-    ro.observe(containerRef.current)
-    return () => ro.disconnect()
-  }, [])
+    ro.observe(el)
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      ro.disconnect()
+    }
+  }, [height])
+
+  // Safely coerce every memory into a usable node
+  const safeMemories = useMemo(() => {
+    if (!Array.isArray(memories)) return []
+    return memories.filter(Boolean).map((m) => ({
+      ...m,
+      id: m.id || Math.random().toString(36).slice(2),
+      category: (m.category && typeof m.category === 'string' && m.category) || 'other',
+      title: m.title || (m.text ? m.text.slice(0, 40) : 'Memory'),
+      summary: m.summary || m.text || '',
+      emotional_intensity: typeof m.emotional_intensity === 'number' ? m.emotional_intensity : 0.5,
+      connects_to_categories: Array.isArray(m.connects_to_categories) ? m.connects_to_categories : [],
+      themes: Array.isArray(m.themes) ? m.themes : [],
+    }))
+  }, [memories])
 
   // Group memories by category
   const grouped = useMemo(() => {
     const g = {}
-    for (const m of memories) {
-      const c = m.category || 'other'
+    for (const m of safeMemories) {
+      const c = m.category
       if (!g[c]) g[c] = []
       g[c].push(m)
     }
     return g
-  }, [memories])
+  }, [safeMemories])
 
   const categories = Object.keys(grouped)
   const cx = size.w / 2
   const cy = size.h / 2
-  const ring1Radius = Math.min(size.w, size.h) * 0.24
-  const ring2Radius = Math.min(size.w, size.h) * 0.42
+  const ringScale = Math.min(size.w, size.h)
+  const ring1Radius = ringScale * 0.22
+  const ring2Radius = ringScale * 0.4
 
   // Compute positions
   const layout = useMemo(() => {
@@ -81,11 +134,18 @@ export function MindMap({ memories, userName }) {
       categories: {},
       memories: [],
     }
+    if (categories.length === 0) return nodes
 
     categories.forEach((cat, i) => {
       const angle = (i / categories.length) * Math.PI * 2 - Math.PI / 2
       const [x, y] = polar(cx, cy, ring1Radius, angle)
-      nodes.categories[cat] = { x, y, angle, label: CATEGORY_META[cat]?.label || cat, color: CATEGORY_META[cat]?.color || '#6b7280' }
+      nodes.categories[cat] = {
+        x,
+        y,
+        angle,
+        label: CATEGORY_META[cat]?.label || cat,
+        color: CATEGORY_META[cat]?.color || '#6b7280',
+      }
 
       const items = grouped[cat]
       const spread = Math.PI / 3
@@ -93,24 +153,37 @@ export function MindMap({ memories, userName }) {
         const subAngle =
           items.length === 1
             ? angle
-            : angle - spread / 2 + (spread * j) / (items.length - 1 || 1)
+            : angle - spread / 2 + (spread * j) / Math.max(1, items.length - 1)
         const [mx, my] = polar(cx, cy, ring2Radius, subAngle)
-        nodes.memories.push({ ...m, x: mx, y: my, catColor: nodes.categories[cat].color, category: cat })
+        nodes.memories.push({
+          ...m,
+          x: mx,
+          y: my,
+          catColor: nodes.categories[cat].color,
+        })
       })
     })
 
     return nodes
   }, [categories, grouped, cx, cy, ring1Radius, ring2Radius, userName])
 
-  // Pan handlers
   const onPointerDown = (e) => {
-    dragState.current = { x: e.clientX, y: e.clientY, tx: transform.x, ty: transform.y }
+    dragState.current = {
+      x: e.clientX,
+      y: e.clientY,
+      tx: transform.x,
+      ty: transform.y,
+    }
   }
   const onPointerMove = (e) => {
     if (!dragState.current) return
     const dx = e.clientX - dragState.current.x
     const dy = e.clientY - dragState.current.y
-    setTransform((t) => ({ ...t, x: dragState.current.tx + dx, y: dragState.current.ty + dy }))
+    setTransform((t) => ({
+      ...t,
+      x: dragState.current.tx + dx,
+      y: dragState.current.ty + dy,
+    }))
   }
   const onPointerUp = () => {
     dragState.current = null
@@ -118,7 +191,10 @@ export function MindMap({ memories, userName }) {
   const onWheel = (e) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? 0.92 : 1.08
-    setTransform((t) => ({ ...t, k: Math.max(0.4, Math.min(2.5, t.k * delta)) }))
+    setTransform((t) => ({
+      ...t,
+      k: Math.max(0.4, Math.min(2.5, t.k * delta)),
+    }))
   }
 
   // Cross-category edges
@@ -142,13 +218,17 @@ export function MindMap({ memories, userName }) {
     return edges
   }, [layout])
 
-  if (memories.length === 0) {
+  if (safeMemories.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center border border-dashed rounded-xl text-center">
+      <div
+        ref={containerRef}
+        className="flex items-center justify-center border border-dashed rounded-xl text-center p-6"
+        style={{ height }}
+      >
         <div>
-          <p className="text-sm font-medium">No memories yet</p>
+          <p className="text-sm font-medium">Mind map will appear here</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-            Add memories in the List tab. The mind map will structure them automatically.
+            Add memories and they'll be structured into categories automatically.
           </p>
         </div>
       </div>
@@ -163,9 +243,11 @@ export function MindMap({ memories, userName }) {
       onWheel={onWheel}
     >
       {/* Zoom controls */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1 bg-card/80 backdrop-blur rounded-lg border p-1">
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1 bg-card/80 backdrop-blur rounded-lg border p-1">
         <button
-          onClick={() => setTransform((t) => ({ ...t, k: Math.min(2.5, t.k * 1.15) }))}
+          onClick={() =>
+            setTransform((t) => ({ ...t, k: Math.min(2.5, t.k * 1.15) }))
+          }
           className="w-7 h-7 rounded hover:bg-muted transition-colors text-sm font-semibold"
         >
           +
@@ -178,27 +260,13 @@ export function MindMap({ memories, userName }) {
           ⌂
         </button>
         <button
-          onClick={() => setTransform((t) => ({ ...t, k: Math.max(0.4, t.k * 0.87) }))}
+          onClick={() =>
+            setTransform((t) => ({ ...t, k: Math.max(0.4, t.k * 0.87) }))
+          }
           className="w-7 h-7 rounded hover:bg-muted transition-colors text-sm font-semibold"
         >
           −
         </button>
-      </div>
-
-      {/* Legend */}
-      <div className="absolute top-3 left-3 z-10 bg-card/80 backdrop-blur rounded-lg border p-2 max-w-[160px]">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-          Categories
-        </div>
-        <div className="space-y-0.5">
-          {categories.slice(0, 6).map((c) => (
-            <div key={c} className="flex items-center gap-1.5 text-[11px]">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_META[c]?.color }} />
-              <span className="text-muted-foreground">{CATEGORY_META[c]?.label || c}</span>
-              <span className="text-muted-foreground/60 ml-auto">{grouped[c].length}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       <svg
@@ -211,19 +279,19 @@ export function MindMap({ memories, userName }) {
         onMouseUp={onPointerUp}
         onMouseLeave={onPointerUp}
       >
+        <defs>
+          <radialGradient id="centerGrad">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          </radialGradient>
+        </defs>
         <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
-          {/* Background grid */}
-          <defs>
-            <radialGradient id="centerGrad">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <circle cx={cx} cy={cy} r={Math.min(size.w, size.h) * 0.45} fill="url(#centerGrad)" />
+          <circle cx={cx} cy={cy} r={ringScale * 0.45} fill="url(#centerGrad)" />
 
           {/* Center → category edges */}
           {categories.map((cat) => {
             const c = layout.categories[cat]
+            if (!c) return null
             return (
               <line
                 key={cat}
@@ -241,6 +309,7 @@ export function MindMap({ memories, userName }) {
           {/* Category → memory edges */}
           {layout.memories.map((m) => {
             const c = layout.categories[m.category]
+            if (!c) return null
             return (
               <line
                 key={'cat-' + m.id}
@@ -251,7 +320,9 @@ export function MindMap({ memories, userName }) {
                 stroke={m.catColor}
                 strokeOpacity="0.5"
                 strokeWidth="1.2"
-                strokeDasharray={selected?.id === m.id || hovered === m.id ? '0' : '3 2'}
+                strokeDasharray={
+                  selected?.id === m.id || hovered === m.id ? '0' : '3 2'
+                }
               />
             )
           })}
@@ -273,26 +344,50 @@ export function MindMap({ memories, userName }) {
 
           {/* Center node */}
           <g>
-            <circle cx={cx} cy={cy} r="28" fill="#8b5cf6" />
-            <circle cx={cx} cy={cy} r="36" fill="none" stroke="#8b5cf6" strokeOpacity="0.3" strokeWidth="2" />
-            <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="700">
-              {(layout.center.label || 'You').slice(0, 10)}
+            <circle cx={cx} cy={cy} r="26" fill="#8b5cf6" />
+            <circle
+              cx={cx}
+              cy={cy}
+              r="34"
+              fill="none"
+              stroke="#8b5cf6"
+              strokeOpacity="0.3"
+              strokeWidth="2"
+            />
+            <text
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="white"
+              fontSize="10"
+              fontWeight="700"
+            >
+              {String(layout.center.label || 'You').slice(0, 10)}
             </text>
           </g>
 
           {/* Category nodes */}
           {categories.map((cat) => {
             const c = layout.categories[cat]
+            if (!c) return null
             return (
               <g key={cat}>
-                <circle cx={c.x} cy={c.y} r="18" fill={c.color} fillOpacity="0.85" stroke={c.color} strokeWidth="2" />
+                <circle
+                  cx={c.x}
+                  cy={c.y}
+                  r="16"
+                  fill={c.color}
+                  fillOpacity="0.85"
+                  stroke={c.color}
+                  strokeWidth="2"
+                />
                 <text
                   x={c.x}
-                  y={c.y + 32}
+                  y={c.y + 28}
                   textAnchor="middle"
-                  fill="currentColor"
                   className="fill-foreground"
-                  fontSize="10"
+                  fontSize="9.5"
                   fontWeight="600"
                 >
                   {c.label} ({grouped[cat].length})
@@ -305,7 +400,7 @@ export function MindMap({ memories, userName }) {
           {layout.memories.map((m) => {
             const isSel = selected?.id === m.id
             const isHover = hovered === m.id
-            const size = 7 + (m.emotional_intensity || 0.5) * 8
+            const r = 6 + (m.emotional_intensity || 0.5) * 7
             return (
               <g
                 key={m.id}
@@ -320,7 +415,7 @@ export function MindMap({ memories, userName }) {
                 <circle
                   cx={m.x}
                   cy={m.y}
-                  r={size + (isSel || isHover ? 3 : 0)}
+                  r={r + (isSel || isHover ? 3 : 0)}
                   fill={m.catColor}
                   fillOpacity={isSel ? 1 : 0.88}
                   stroke="white"
@@ -329,15 +424,14 @@ export function MindMap({ memories, userName }) {
                 {(isHover || isSel) && (
                   <text
                     x={m.x}
-                    y={m.y - size - 8}
+                    y={m.y - r - 6}
                     textAnchor="middle"
-                    fill="currentColor"
                     className="fill-foreground"
                     fontSize="10"
                     fontWeight="600"
                     style={{ pointerEvents: 'none' }}
                   >
-                    {m.title}
+                    {m.title.slice(0, 22)}
                   </text>
                 )}
               </g>
@@ -346,6 +440,29 @@ export function MindMap({ memories, userName }) {
         </g>
       </svg>
 
+      {/* Legend */}
+      <div className="absolute top-2 left-2 z-10 bg-card/80 backdrop-blur rounded-lg border p-2 max-w-[150px] pointer-events-none">
+        <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+          Categories
+        </div>
+        <div className="space-y-0.5 max-h-[90px] overflow-y-auto pointer-events-auto">
+          {categories.slice(0, 8).map((c) => (
+            <div key={c} className="flex items-center gap-1.5 text-[10px]">
+              <div
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: CATEGORY_META[c]?.color || '#6b7280' }}
+              />
+              <span className="text-muted-foreground truncate">
+                {CATEGORY_META[c]?.label || c}
+              </span>
+              <span className="text-muted-foreground/60 ml-auto">
+                {grouped[c].length}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Detail panel */}
       <AnimatePresence>
         {selected && (
@@ -353,31 +470,41 @@ export function MindMap({ memories, userName }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-sm bg-card/95 backdrop-blur border rounded-xl shadow-xl p-4"
+            className="absolute bottom-2 left-2 right-2 sm:right-auto sm:max-w-sm bg-card/95 backdrop-blur border rounded-xl shadow-xl p-3"
           >
-            <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selected.catColor }} />
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: selected.catColor }}
+                />
+                <span className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">
                   {CATEGORY_META[selected.category]?.label || selected.category}
                 </span>
               </div>
-              <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground -mt-0.5 text-lg leading-none">×</button>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-muted-foreground hover:text-foreground -mt-0.5 text-lg leading-none"
+              >
+                ×
+              </button>
             </div>
-            <h3 className="text-sm font-bold mb-1">{selected.title}</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-2">{selected.summary}</p>
+            <h3 className="text-xs font-bold mb-1">{selected.title}</h3>
+            <p className="text-[11px] text-muted-foreground leading-relaxed mb-1.5">
+              {selected.summary}
+            </p>
             {selected.clinical_significance && (
-              <p className="text-[11px] italic text-primary/80 mb-2">{selected.clinical_significance}</p>
+              <p className="text-[10px] italic text-primary/80 mb-1.5">
+                {selected.clinical_significance}
+              </p>
             )}
-            <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2">
-              {selected.dominant_emotion && <span>💭 {selected.dominant_emotion}</span>}
-              {selected.estimated_age_at_event && <span>Age {selected.estimated_age_at_event}</span>}
-              {selected.time_period && selected.time_period !== 'unknown' && <span>{selected.time_period.replace('_', ' ')}</span>}
-            </div>
             {selected.themes?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
+              <div className="flex flex-wrap gap-1 mt-1.5">
                 {selected.themes.map((t) => (
-                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  <span
+                    key={t}
+                    className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+                  >
                     {t}
                   </span>
                 ))}
@@ -387,5 +514,13 @@ export function MindMap({ memories, userName }) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+export function MindMap(props) {
+  return (
+    <MindMapBoundary>
+      <MindMapInner {...props} />
+    </MindMapBoundary>
   )
 }

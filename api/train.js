@@ -29,11 +29,72 @@ Return JSON with this EXACT structure:
 
 Be precise. Preserve the client's voice. Never invent details. If a field is unknowable from the text, use null or an empty array.`
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+const GAP_PROMPT = `You are a clinical intake analyst reviewing a client's self-taught memory bank. Your job is to identify what's MISSING from their profile so their AI therapist can fill in the gaps.
 
+Return a JSON object:
+{
+  "gap_questions": [
+    {
+      "question": "Natural question phrased like a therapist would ask it",
+      "category": "which category this fills — family/relationship/loss/trauma/identity/health/career/substance/belief/achievement/childhood/body/other",
+      "reason": "One sentence on why this gap matters for psychological understanding"
+    }
+  ]
+}
+
+Rules:
+- Generate 4-8 questions — the most useful ones to ask next.
+- Mix across time periods (childhood, adolescence, adulthood, recent) if there are gaps in the timeline.
+- Avoid duplicating topics already well-covered. Look at what CATEGORIES and LIFE STAGES the client has memories in, and target the thin ones.
+- Each question should feel specific and curious, not like a form field. Example: "What was your relationship with your mom like when you were a teenager?" not "Tell me about your mother."
+- Prefer questions that would unlock rich narrative answers, not one-word responses.
+- Phrase questions so the client could naturally type a paragraph in reply.`
+
+export default async function handler(req, res) {
   const user = await verifyAuth(req)
   if (!user) return res.status(401).json({ error: 'Unauthorized' })
+
+  // GET = suggested gap questions
+  if (req.method === 'GET') {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('questionnaire, display_name')
+        .eq('id', user.id)
+        .single()
+
+      const q = profile?.questionnaire || {}
+      const memories = q.user_trained_memories || []
+
+      const summary = memories.map((m) => ({
+        title: m.title,
+        category: m.category,
+        time_period: m.time_period,
+        age: m.estimated_age_at_event,
+        themes: m.themes,
+      }))
+
+      const r = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 800,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: GAP_PROMPT },
+          {
+            role: 'user',
+            content: `Client profile snippet:\n${q.life_context_document ? q.life_context_document.slice(0, 2000) : '(none)'}\n\nMemory bank (${memories.length} memories):\n${JSON.stringify(summary, null, 2)}\n\nWhat should we ask next to fill in the gaps?`,
+          },
+        ],
+      })
+      const parsed = JSON.parse(r.choices[0].message.content)
+      return res.json(parsed)
+    } catch (e) {
+      console.error('Gap questions error:', e)
+      return res.status(500).json({ error: e.message })
+    }
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { text } = req.body
   if (!text || text.trim().length < 3) {

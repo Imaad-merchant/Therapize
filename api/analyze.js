@@ -122,18 +122,33 @@ Return a JSON object with this EXACT structure:
     "growth_edges_observed": ["..."],
     "history_clues": ["Any past detail they mentioned worth saving to their life story"],
     "notes_for_master_profile": "2-3 sentence summary of what should be added to this person's master psychological profile based on THIS conversation — phrased in the same tone as the existing profile."
-  }
+  },
+  "suggested_next_questions": [
+    "3-5 questions the AI would naturally want to ask next to deepen understanding, fill timeline gaps, or explore a newly surfaced thread. Each question 8-20 words. Phrased like a therapist would actually say them. These become quick-reply suggestions for the client."
+  ]
 }
+
+CRITICAL — EVERY FIELD MUST BE POPULATED ON EVERY CALL:
+- live_narration: ALWAYS at least 2 paragraphs, even for very short conversations. If the client has only said "hi", analyze the texture of the greeting (guarded? eager? tentative?), reference anything you know about them from the profile/memories, and speculate about what might emerge.
+- emotional_state: ALWAYS provide all 4 emotions summing to exactly 100. Infer from tone, word choice, and profile context when messages are sparse.
+- active_patterns: ALWAYS provide at least 2. For early/thin data, draw from their profile, trained memories, and whatever the single message reveals. Never return an empty array.
+- themes: ALWAYS at least 3 — anchored in what you know about them, not just the immediate message.
+- key_insight: ALWAYS present. For thin data, synthesize from profile + current message. The title should feel like an observation only a sharp clinician would make.
+- cognitive_map: ALWAYS populate all four fields — infer from profile + message.
+- session_trajectory: ALWAYS set a direction.
+- profile_updates: ALWAYS populate — even a hello reveals something about their state/mood/approach to seeking help.
+
+NEVER return null, empty strings, or empty arrays for any field above. When data is thin, lean on the profile context. When profile is thin, lean on psychological priors about people who reach for an AI therapist. But never skip a field.
 
 RULES:
 - The live_narration is the star — make it the richest, most human part. Specific. Thoughtful. Conversational.
-- Be SPECIFIC to what was actually said. No generic psychology.
+- Be SPECIFIC to what was actually said. Reference direct quotes when possible.
 - Emotional spectrum has exactly 4 emotions summing to 100.
-- Active patterns: 2-4 items max.
+- Active patterns: 2-4 items, minimum 2.
 - Apply the 5-step protocol: gather, identify patterns, apply theory silently, draw insights, offer targeted reflection.
 - Use deep frameworks: Jungian shadow, attachment, schema therapy, existential, IFS, object relations.
-- profile_updates must be populated on every call — even thin observations count. They will be automatically merged into the master profile.
-- Even short conversations reveal something. Work with what you have.`
+- profile_updates will be automatically merged into the master profile.
+- Even one message reveals something. Work with what you have.`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

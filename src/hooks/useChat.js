@@ -131,6 +131,10 @@ export function useChat() {
       }
       addMessage(assistantMessage)
 
+      // Refresh persisted messages cache so it survives refresh
+      queryClient.invalidateQueries({ queryKey: ['messages', currentSessionId] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+
       // Fire insight analysis in background after each exchange
       analyzeConversation()
     } catch (error) {
@@ -207,6 +211,9 @@ export function useChat() {
         content: fullContent,
         created_at: new Date().toISOString(),
       })
+
+      queryClient.invalidateQueries({ queryKey: ['messages', session.id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
     } catch (error) {
       console.error('Greeting error:', error)
     } finally {
@@ -240,9 +247,16 @@ export function useChat() {
   }
 
   const loadSession = async (sessionId, existingMessages) => {
-    setCurrentSession(sessionId)
-    setMessages(existingMessages)
-    setBrainInsights(null)
+    // If switching to a different session, reset state. If reloading same
+    // session (e.g. on refresh), keep streaming-in-progress state intact.
+    if (currentSessionId !== sessionId) {
+      setCurrentSession(sessionId)
+      setMessages(existingMessages || [])
+      setBrainInsights(null)
+    } else if (existingMessages && existingMessages.length > messages.length) {
+      // Same session, but DB has more messages than our local state
+      setMessages(existingMessages)
+    }
 
     // Load persisted brain_insights and chat_mode from the session row
     try {

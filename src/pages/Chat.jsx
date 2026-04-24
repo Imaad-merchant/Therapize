@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useChat } from '@/hooks/useChat'
 import { useSessions } from '@/hooks/useSessions'
 import { useMessages } from '@/hooks/useMessages'
@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 
 export default function Chat() {
   const { sessionId } = useParams()
+  const navigate = useNavigate()
   const {
     sendMessage,
     startNewSession,
@@ -21,26 +22,31 @@ export default function Chat() {
     currentSessionId,
   } = useChat()
   const { sessions, isLoading: sessionsLoading } = useSessions()
-  const { messages: storedMessages } = useMessages(sessionId)
+  const { messages: storedMessages, isLoading: messagesLoading } = useMessages(sessionId)
   const [sessionListOpen, setSessionListOpen] = useState(false)
   const [brainPanelOpen, setBrainPanelOpen] = useState(true)
   const [mobileBrainOpen, setMobileBrainOpen] = useState(false)
 
-  // Load session from URL param
+  // Load session whenever URL sessionId changes — even if messages are empty
   useEffect(() => {
-    if (sessionId && sessionId !== currentSessionId && storedMessages.length > 0) {
+    if (!sessionId) return
+    if (messagesLoading) return
+    if (sessionId !== currentSessionId) {
       loadSession(sessionId, storedMessages)
     }
-  }, [sessionId, storedMessages])
+  }, [sessionId, currentSessionId, messagesLoading, storedMessages])
 
   const handleSelectSession = (session) => {
     setSessionListOpen(false)
-    loadSession(session.id, [])
+    navigate(`/chat/${session.id}`)
   }
 
   const handleNewSession = async () => {
     setSessionListOpen(false)
-    await startNewSession()
+    const session = await startNewSession()
+    if (session?.id) {
+      navigate(`/chat/${session.id}`)
+    }
   }
 
   const handleToggleBrainPanel = () => {
@@ -92,7 +98,10 @@ export default function Chat() {
       <div className="flex-1 min-w-0 min-h-0">
         <ChatContainer
           onSend={sendMessage}
-          onEndSession={endCurrentSession}
+          onEndSession={async () => {
+            await endCurrentSession()
+            navigate('/chat')
+          }}
           isSessionActive={isActive}
           onToggleBrainPanel={handleToggleBrainPanel}
           brainPanelOpen={brainPanelOpen}

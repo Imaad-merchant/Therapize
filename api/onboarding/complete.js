@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { verifyAuth } from '../middleware/auth.js'
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
 }
 
 export default async function handler(req, res) {
@@ -31,54 +31,111 @@ export default async function handler(req, res) {
 
     const extractionResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: 'You are a clinical psychologist. Respond with valid JSON only.',
+          content: 'You are a world-class clinical psychologist and psychoanalyst with 30 years of experience. You see patterns others miss. You understand people at a level that feels almost supernatural. Respond with valid JSON only.',
         },
         {
           role: 'user',
-          content: `Review this intake conversation and extract a comprehensive life context document. This document will be used by an AI wellness coach to provide deeply personalized guidance in future sessions.
+          content: `Analyze this intake conversation with extraordinary depth. Your analysis will be shown to the client as a "deep profile" — it should feel revelatory, like you dove into their brain and surfaced things they barely knew about themselves. Be specific, use their actual words and stories when possible. Never be generic.
 
 CONVERSATION:
 ${conversationText}
 
-Generate a JSON response with this EXACT structure (fill in based on what was discussed, use null for anything not covered):
+Generate a JSON response with this EXACT structure. Be SPECIFIC to this person — no generic filler. If something wasn't discussed, use null rather than guessing. But for what WAS discussed, go DEEP.
 
 {
-  "life_context_document": "A 3-5 paragraph narrative summary written in second person ('You are...', 'You grew up...') that captures who this person is — their story, their patterns, their pain points, their strengths, and what they're seeking. This should read like a clinical intake summary but in warm, human language. Include specific details they shared. This is the most important field.",
-
   "display_name": "Their first name",
   "age": null,
 
-  "attachment_patterns": {
-    "primary_style": "secure/anxious/avoidant/disorganized or null",
-    "notes": "Brief description of how this shows up for them"
+  "life_context_document": "A 4-6 paragraph narrative written in second person ('You are...') that reads like the most insightful character study ever written about this person. Include specific details from their story. This should make them feel deeply understood — almost uncomfortably so.",
+
+  "personality_archetype": {
+    "label": "A compelling 2-4 word archetype label (e.g., 'The Quiet Architect', 'The Reluctant Caretaker', 'The Armored Romantic'). This should feel true and specific to them.",
+    "description": "2-3 sentences explaining why this archetype fits them based on what they shared."
   },
 
-  "core_schemas": ["List of identified schemas from the conversation, e.g., 'abandonment', 'unrelenting_standards', 'defectiveness'"],
+  "the_headline": "One powerful sentence that captures who this person is at their core — the kind of line that makes them stop and think. Like a thesis statement for their psyche. Example: 'You've spent your whole life proving you don't need anyone, but the exhaustion of doing it alone is what finally brought you here.'",
 
-  "defense_mechanisms": ["Primary defense mechanisms observed, e.g., 'intellectualization', 'humor', 'avoidance'"],
+  "revelations": [
+    {
+      "title": "Short label (3-6 words)",
+      "insight": "A specific, revelatory insight about this person — something they might not fully realize about themselves. 2-3 sentences. Reference specific things they said. These should feel like 'how did you know that?' moments.",
+      "evidence": "The specific thing they said or pattern you noticed that led to this insight."
+    }
+  ],
 
-  "shadow_material": "What they seem to reject or avoid in themselves",
+  "inner_world": {
+    "core_belief": "The deepest belief they hold about themselves, often formed in childhood. One sentence.",
+    "inner_critic_voice": "What their inner critic says to them — the specific message. Put it in quotes like dialogue.",
+    "what_they_crave": "What they most deeply want but may struggle to ask for.",
+    "what_they_avoid": "The feeling, situation, or truth they work hardest to avoid.",
+    "superpower": "Their greatest psychological strength — the thing they don't give themselves enough credit for."
+  },
+
+  "attachment_patterns": {
+    "primary_style": "secure/anxious-preoccupied/dismissive-avoidant/fearful-avoidant or null",
+    "how_it_shows_up": "2-3 sentences about how this attachment style specifically manifests in THEIR life, referencing what they shared.",
+    "in_relationships": "How this plays out in their romantic/close relationships specifically.",
+    "origin_story": "Where this attachment pattern likely formed — what in their childhood/family created this."
+  },
+
+  "core_schemas": [
+    {
+      "schema": "Schema name (e.g., 'Abandonment', 'Unrelenting Standards', 'Defectiveness')",
+      "how_it_runs_their_life": "2-3 sentences about how this schema specifically shows up in their daily life, decisions, and relationships. Be concrete.",
+      "they_might_not_realize": "The subtle way this schema operates that they probably don't see."
+    }
+  ],
+
+  "defense_mechanisms": [
+    {
+      "mechanism": "Name of the defense (e.g., 'Intellectualization', 'Humor as deflection')",
+      "description": "How they specifically use this defense — with examples from the conversation."
+    }
+  ],
+
+  "shadow_profile": {
+    "rejected_self": "The part of themselves they push away or deny. What would they never want to be seen as?",
+    "projection_pattern": "What they tend to criticize in others that might be a disowned part of themselves.",
+    "the_mask": "The version of themselves they present to the world vs. who they are underneath."
+  },
 
   "relational_patterns": {
-    "role": "caretaker/fixer/pleaser/rebel/etc or null",
-    "conflict_style": "How they handle conflict",
-    "vulnerability": "Can they be vulnerable? With whom?"
+    "role_in_relationships": "The role they consistently play (caretaker, fixer, performer, rebel, ghost, etc.) with specific evidence.",
+    "conflict_style": "What they do when tension arises — fight, flee, freeze, or fawn? How specifically?",
+    "vulnerability_capacity": "How capable are they of being truly vulnerable? What happens when they try?",
+    "pattern_they_repeat": "A recurring relational pattern they may not fully see."
+  },
+
+  "emotional_fingerprint": {
+    "dominant_emotions": ["The 2-3 emotions they seem to experience most often"],
+    "suppressed_emotions": ["The 1-2 emotions they have the hardest time accessing or expressing"],
+    "emotional_range": "narrow/moderate/wide — how much emotional range did they demonstrate?",
+    "regulation_style": "How do they manage difficult emotions? Over-control, under-control, or healthy regulation?"
   },
 
   "existential_landscape": {
-    "meaning_sources": "What gives them meaning",
-    "authenticity": "Are they living authentically or performing?",
-    "core_fears": "What are they most afraid of?"
+    "meaning_sources": "What gives their life meaning — or the absence they feel.",
+    "authenticity_gap": "The distance between who they are and who they're performing as. What role are they playing that isn't them?",
+    "core_fears": "Their deepest fears — not surface fears, but the existential ones.",
+    "relationship_with_mortality": "How do they relate to the finite nature of life? Do they live urgently or avoid thinking about it?"
   },
 
-  "presenting_concerns": ["Main issues they brought up"],
-  "strengths": ["Strengths and resilience factors identified"],
-  "goals": ["What they want to work on or change"],
+  "behavioral_patterns": {
+    "under_stress": "What they do when the pressure is on — their go-to coping behaviors.",
+    "self_sabotage": "How they get in their own way. The specific pattern of self-sabotage, if any.",
+    "energy_sources": "What genuinely recharges them vs. what they think recharges them.",
+    "decision_making": "How they make decisions — gut, analysis, avoidance, or outsourcing to others?"
+  },
+
+  "presenting_concerns": ["Main issues that brought them here"],
+  "strengths": ["Their genuine strengths — not platitudes, but real things you noticed"],
+  "growth_edges": ["The specific areas where growth is possible — where the work is"],
+  "goals": ["What they want to work on"],
 
   "somatic_behavioral": {
     "stress_location": "Where stress lives in their body",
@@ -88,8 +145,10 @@ Generate a JSON response with this EXACT structure (fill in based on what was di
     "energy": null
   },
 
-  "therapeutic_approach_notes": "Based on this person's presentation, which therapeutic frameworks would be most helpful? (e.g., 'Schema therapy for abandonment patterns, ACT for flexibility around unrelenting standards, Jungian shadow work for rejected anger')"
-}`,
+  "therapeutic_approach_notes": "Based on this specific person, which therapeutic frameworks and specific interventions would be most effective and why? Be specific — not just 'CBT' but 'CBT for the catastrophizing pattern around work performance, combined with schema therapy to address the unrelenting standards schema that drives their perfectionism.'"
+}
+
+CRITICAL: Generate 4-7 revelations. Each one should be specific enough that this person would say 'wow, that's exactly right.' Never be vague or generic. If you only have enough data for fewer insights, that's fine — quality over quantity. Use null for any field where the conversation didn't provide enough information.`,
         },
       ],
     })
@@ -98,14 +157,21 @@ Generate a JSON response with this EXACT structure (fill in based on what was di
 
     const questionnaire = {
       life_context_document: extracted.life_context_document,
+      personality_archetype: extracted.personality_archetype,
+      the_headline: extracted.the_headline,
+      revelations: extracted.revelations,
+      inner_world: extracted.inner_world,
       attachment_patterns: extracted.attachment_patterns,
       core_schemas: extracted.core_schemas,
       defense_mechanisms: extracted.defense_mechanisms,
-      shadow_material: extracted.shadow_material,
+      shadow_profile: extracted.shadow_profile,
       relational_patterns: extracted.relational_patterns,
+      emotional_fingerprint: extracted.emotional_fingerprint,
       existential_landscape: extracted.existential_landscape,
+      behavioral_patterns: extracted.behavioral_patterns,
       presenting_concerns: extracted.presenting_concerns,
       strengths: extracted.strengths,
+      growth_edges: extracted.growth_edges,
       goals: extracted.goals,
       somatic_behavioral: extracted.somatic_behavioral,
       therapeutic_approach_notes: extracted.therapeutic_approach_notes,
@@ -134,8 +200,7 @@ Generate a JSON response with this EXACT structure (fill in based on what was di
 
     res.json({
       success: true,
-      life_context_preview:
-        extracted.life_context_document?.substring(0, 200) + '...',
+      profile: extracted,
     })
   } catch (error) {
     console.error('Onboarding complete error:', error)

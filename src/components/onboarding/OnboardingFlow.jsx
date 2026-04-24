@@ -150,7 +150,7 @@ export function OnboardingFlow() {
 
       if (!response.ok) throw new Error('Failed to complete onboarding')
 
-      navigate('/chat')
+      navigate('/profile')
     } catch (error) {
       console.error('Complete error:', error)
       setCompleting(false)

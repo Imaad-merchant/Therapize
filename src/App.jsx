@@ -12,6 +12,7 @@ import Onboarding from '@/pages/Onboarding'
 import Chat from '@/pages/Chat'
 import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
+import Profile from '@/pages/Profile'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const queryClient = new QueryClient({
@@ -77,6 +78,7 @@ function AppRoutes() {
       {/* Protected - no onboarding required */}
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* Protected + onboarding required */}
@@ -85,6 +87,7 @@ function AppRoutes() {
           <Route element={<AppLayout />}>
             <Route path="/chat" element={<Chat />} />
             <Route path="/chat/:sessionId" element={<Chat />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

@@ -42,42 +42,45 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'No existing profile to update' })
     }
 
-    // Load the most recent brain insights (from session_id if provided, else aggregate recent snapshots)
     let recentInsights = []
-    if (session_id) {
-      const { data: snapshots } = await supabase
-        .from('insight_snapshots')
-        .select('insights')
-        .eq('session_id', session_id)
+    try {
+      const query = supabase.from('insight_snapshots').select('insights')
+      if (session_id) query.eq('session_id', session_id)
+      query
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(session_id ? 5 : 10)
+      const { data: snapshots } = await query
       recentInsights = (snapshots || []).map((s) => s.insights)
-    } else {
-      const { data: snapshots } = await supabase
-        .from('insight_snapshots')
-        .select('insights')
+    } catch (e) {
+      console.log('insight_snapshots not available')
+    }
+
+    if (recentInsights.length === 0 && session_id) {
+      const { data: sessionRow } = await supabase
+        .from('sessions')
+        .select('brain_insights')
+        .eq('id', session_id)
+        .eq('user_id', userId)
+        .single()
+      if (sessionRow?.brain_insights) {
+        recentInsights = [sessionRow.brain_insights]
+      }
+    }
+
+    let memories = []
+    try {
+      const { data } = await supabase
+        .from('saved_memories')
+        .select('source_type, payload')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(10)
-      recentInsights = (snapshots || []).map((s) => s.insights)
+        .limit(30)
+      memories = data || []
+    } catch (e) {
+      console.log('saved_memories not available')
     }
 
-    // Load saved memories
-    const { data: memories = [] } = await supabase
-      .from('saved_memories')
-      .select('source_type, payload')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(30)
-
-    if (recentInsights.length === 0 && memories.length === 0) {
-      return res
-        .status(400)
-        .json({ error: 'No new insights to merge into profile' })
-    }
-
-    // Also pull recent messages for contextual grounding
     let conversationExcerpt = ''
     if (session_id) {
       const { data: messages = [] } = await supabase
@@ -90,6 +93,17 @@ router.post('/', async (req, res) => {
         .map((m) => `${m.role === 'user' ? 'CLIENT' : 'THERAPIST'}: ${m.content}`)
         .join('\n\n')
         .slice(0, 8000)
+    }
+
+    if (
+      recentInsights.length === 0 &&
+      memories.length === 0 &&
+      !conversationExcerpt
+    ) {
+      return res.status(400).json({
+        error:
+          'No new insights or conversation to merge into profile. Chat for a bit first.',
+      })
     }
 
     const response = await openai.chat.completions.create({

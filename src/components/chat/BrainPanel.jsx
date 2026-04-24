@@ -272,7 +272,7 @@ function SessionTrajectory({ trajectory }) {
 export function BrainPanel() {
   const { brainInsights, isAnalyzing, currentSessionId } = useChatStore()
   const { memories, saveMemory } = useMemories()
-  const { getAccessToken } = useAuth()
+  const { user, getAccessToken } = useAuth()
   const queryClient = useQueryClient()
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
@@ -282,6 +282,9 @@ export function BrainPanel() {
     setSyncing(true)
     try {
       const token = await getAccessToken()
+      if (!token) {
+        throw new Error('Not signed in')
+      }
       const res = await fetch('/api/profile/sync', {
         method: 'POST',
         headers: {
@@ -290,20 +293,23 @@ export function BrainPanel() {
         },
         body: JSON.stringify({ session_id: currentSessionId }),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Sync failed')
+        throw new Error(data.error || `Sync failed (${res.status})`)
       }
-      const data = await res.json()
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       setJustSynced(true)
       toast.success('Profile updated', {
-        description: data.changes_summary || 'Your master profile has been enriched with new insights.',
+        description:
+          data.changes_summary ||
+          'Your master profile has been enriched with new insights.',
       })
-      setTimeout(() => setJustSynced(false), 3000)
+      setTimeout(() => setJustSynced(false), 4000)
     } catch (e) {
+      console.error('Sync error:', e)
       toast.error('Could not sync to profile', {
-        description: e.message,
+        description: e.message || 'Check console for details',
       })
     } finally {
       setSyncing(false)
@@ -390,15 +396,15 @@ export function BrainPanel() {
         {/* Sync to Profile CTA */}
         <motion.button
           onClick={handleSyncToProfile}
-          disabled={syncing || !insights}
-          whileHover={{ scale: syncing || !insights ? 1 : 1.01 }}
-          whileTap={{ scale: syncing || !insights ? 1 : 0.99 }}
+          disabled={syncing}
+          whileHover={{ scale: syncing ? 1 : 1.01 }}
+          whileTap={{ scale: syncing ? 1 : 0.99 }}
           className={cn(
             'w-full relative overflow-hidden rounded-xl border p-3 text-left transition-colors',
             justSynced
               ? 'bg-green-500/10 border-green-500/40'
-              : 'bg-gradient-to-br from-primary/5 to-primary/10 border-primary/30 hover:border-primary/50',
-            (syncing || !insights) && 'opacity-60 cursor-not-allowed'
+              : 'bg-gradient-to-br from-primary/10 to-primary/20 border-primary/40 hover:border-primary/60',
+            syncing && 'opacity-70 cursor-wait'
           )}
         >
           <div className="flex items-center gap-2.5">

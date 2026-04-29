@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Analytics } from '@vercel/analytics/react'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAuth } from '@/hooks/useAuth'
@@ -111,6 +112,7 @@ export default function App() {
         <BrowserRouter>
           <AppRoutes />
           <Toaster />
+          <Analytics />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

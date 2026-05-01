@@ -20,6 +20,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Timeline } from '@/components/train/Timeline'
+import { MindMap } from '@/components/train/MindMap'
+import { Clock, Network } from 'lucide-react'
 import {
   Brain,
   Heart,
@@ -446,7 +450,7 @@ export default function Profile() {
     <div className="h-full overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5">
       {/* Back button */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/60">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -468,102 +472,143 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Hero */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
-        <div className="max-w-3xl mx-auto px-4 pt-12 pb-12 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center space-y-6"
-          >
-            <div className="mx-auto w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Fingerprint className="w-10 h-10 text-primary" />
+      {/* Compact Hero */}
+      <div className="max-w-5xl mx-auto px-4 pt-5 pb-3">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Fingerprint className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                {activeProfile?.display_name
+                  ? `${activeProfile.display_name}, This Is You`
+                  : 'This Is You'}
+              </h1>
+              {q.personality_archetype?.label && (
+                <Badge variant="secondary" className="text-[11px]">
+                  {q.personality_archetype.label}
+                </Badge>
+              )}
             </div>
-
-            {q.personality_archetype?.label && (
-              <Badge
-                variant="secondary"
-                className="text-sm px-4 py-1.5 font-medium"
-              >
-                {q.personality_archetype.label}
-              </Badge>
-            )}
-
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-              {activeProfile?.display_name
-                ? `${profile.display_name}, This Is You`
-                : 'This Is You'}
-            </h1>
-
             {q.the_headline && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.8 }}
-                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed italic"
-              >
+              <p className="text-sm text-muted-foreground italic mt-0.5 line-clamp-1">
                 "{q.the_headline}"
-              </motion.p>
-            )}
-
-            {q.personality_archetype?.description && (
-              <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-                {q.personality_archetype.description}
               </p>
             )}
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 pb-20 space-y-6">
-        {/* At-a-glance visual summary */}
-        <VisualSummary q={q} />
+      <div className="max-w-5xl mx-auto px-4 pb-12">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl mx-auto mb-5">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="story" className="text-xs sm:text-sm">Your Life</TabsTrigger>
+            <TabsTrigger value="patterns" className="text-xs sm:text-sm">Patterns</TabsTrigger>
+            <TabsTrigger value="sessions" className="text-xs sm:text-sm">Sessions</TabsTrigger>
+          </TabsList>
 
-        {/* Train AI card + user-trained memories */}
-        <TrainedMemoriesSection q={q} onNavigate={() => navigate('/train')} />
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview" className="space-y-5 mt-0">
+            <VisualSummary q={q} />
+            <TrainedMemoriesSection q={q} onNavigate={() => navigate('/train')} />
 
-        {/* Life Context */}
-        {q.life_context_document && (
-          <Section icon={Brain} title="Your Story" delay={0.1}>
-            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {q.life_context_document}
-            </div>
-          </Section>
-        )}
+            {/* Revelations */}
+            {q.revelations?.length > 0 && (
+              <motion.div
+                variants={stagger}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+              >
+                <div className="flex items-center gap-3 mb-4 px-1">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Eye className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      Things You Might Not Realize
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Tap any card to see the evidence
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {q.revelations.map((r, i) => (
+                    <RevealCard key={i} index={i} {...r} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </TabsContent>
 
-        {/* Revelations */}
-        {q.revelations?.length > 0 && (
-          <motion.div
-            variants={stagger}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            <div className="flex items-center gap-3 mb-4 px-1">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Eye className="w-5 h-5 text-primary" />
+          {/* STORY TAB — Life context + Timeline + MindMap */}
+          <TabsContent value="story" className="space-y-5 mt-0">
+            {q.life_context_document && (
+              <Section icon={Brain} title="Your Story" delay={0.05}>
+                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {q.life_context_document}
+                </div>
+              </Section>
+            )}
+
+            {(q.user_trained_memories?.length || 0) > 0 ? (
+              <div className="grid lg:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-bold">Timeline</h3>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {q.user_trained_memories.length}
+                    </Badge>
+                  </div>
+                  <div className="max-h-[480px] overflow-y-auto pr-1">
+                    <Timeline memories={q.user_trained_memories} />
+                  </div>
+                </Card>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Network className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-bold">Mind Map</h3>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {q.user_trained_memories.length}
+                    </Badge>
+                  </div>
+                  <MindMap
+                    memories={q.user_trained_memories}
+                    userName={activeProfile?.display_name || 'You'}
+                    height={460}
+                  />
+                </Card>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">
-                  Things You Might Not Realize
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Tap any card to see the evidence
+            ) : (
+              <Card className="p-8 text-center border-dashed">
+                <div className="w-12 h-12 mx-auto rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                  <Sparkles className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-sm font-semibold mb-1">No memories yet</h3>
+                <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto">
+                  Train Sage with memories from your past — they'll appear on a timeline and connect in a mind map.
                 </p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {q.revelations.map((r, i) => (
-                <RevealCard key={i} index={i} {...r} />
-              ))}
-            </div>
-          </motion.div>
-        )}
+                <Button size="sm" onClick={() => navigate('/train')} className="gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Train Sage
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
 
-        {/* Inner World */}
+          {/* PATTERNS TAB */}
+          <TabsContent value="patterns" className="space-y-5 mt-0">
+            {/* Inner World */}
         {q.inner_world && (
           <Section icon={Ghost} title="Your Inner World" delay={0.1}>
             <div className="space-y-4">
@@ -914,6 +959,25 @@ export default function Profile() {
           </Section>
         )}
 
+        {!q.inner_world &&
+          !q.attachment_patterns?.primary_style &&
+          !q.shadow_profile &&
+          !q.core_schemas?.length &&
+          !q.defense_mechanisms?.length &&
+          !q.emotional_fingerprint &&
+          !q.relational_patterns &&
+          !q.behavioral_patterns &&
+          !q.existential_landscape && (
+            <Card className="p-8 text-center border-dashed">
+              <p className="text-sm text-muted-foreground">
+                Patterns will appear here as you have more conversations with Sage.
+              </p>
+            </Card>
+          )}
+          </TabsContent>
+
+          {/* SESSIONS TAB */}
+          <TabsContent value="sessions" className="space-y-5 mt-0">
         {/* Session Notes — auto-synced from each chat */}
         {q.session_notes?.length > 0 && (
           <Section icon={MessageCircle} title="Session Notes" delay={0.1}>
@@ -963,38 +1027,44 @@ export default function Profile() {
           </Section>
         )}
 
+        {!q.session_notes?.length && !q.history_notes?.length && (
+          <Card className="p-8 text-center border-dashed">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+              <MessageCircle className="w-6 h-6 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold mb-1">No session notes yet</h3>
+            <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto">
+              Start a conversation with Sage and reflections will be auto-captured here.
+            </p>
+            <Button size="sm" onClick={() => navigate('/chat')} className="gap-1.5">
+              <MessageCircle className="w-3.5 h-3.5" />
+              Start a session
+            </Button>
+          </Card>
+        )}
+          </TabsContent>
+        </Tabs>
+
         {/* CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center space-y-4 pt-8"
+          className="text-center space-y-3 pt-8"
         >
           <Separator />
-          <div className="pt-4 space-y-3">
-            <h3 className="text-xl font-semibold">
-              This is your starting point
-            </h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+          <div className="pt-3 space-y-2">
+            <p className="text-muted-foreground text-xs max-w-md mx-auto">
               Every conversation adds more. Sage auto-updates this profile as you talk.
             </p>
-            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
-              <Button
-                size="lg"
-                onClick={() => navigate('/chat')}
-                className="gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button size="sm" onClick={() => navigate('/chat')} className="gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5" />
                 Start a session
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => navigate('/train')}
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
+              <Button size="sm" variant="outline" onClick={() => navigate('/train')} className="gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
                 Train Sage
               </Button>
             </div>

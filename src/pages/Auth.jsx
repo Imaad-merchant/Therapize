@@ -70,9 +70,9 @@ export default function Auth() {
           <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-2">
             <Brain className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-xl">Welcome to Sage</CardTitle>
+          <CardTitle className="text-xl">Welcome to Tenzure</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Your AI wellness companion
+            Deep psychoanalytic AI therapy
           </p>
         </CardHeader>
 

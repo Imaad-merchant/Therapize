@@ -253,16 +253,21 @@ export function useChat() {
   const loadSession = async (sessionId, existingMessages) => {
     // If switching to a different session, reset state. If reloading same
     // session (e.g. on refresh), keep streaming-in-progress state intact.
-    if (currentSessionId !== sessionId) {
+    const switching = currentSessionId !== sessionId
+    if (switching) {
       setCurrentSession(sessionId)
       setMessages(existingMessages || [])
+      // Don't flash empty Brain panel — show loading state instead so
+      // the persisted insights from DB land directly on the screen.
       setBrainInsights(null)
+      setAnalyzing(true)
     } else if (existingMessages && existingMessages.length > messages.length) {
       // Same session, but DB has more messages than our local state
       setMessages(existingMessages)
     }
 
     // Load persisted brain_insights and chat_mode from the session row
+    let hadStoredInsights = false
     try {
       const { data: sessionRow } = await supabase
         .from('sessions')
@@ -272,6 +277,7 @@ export function useChat() {
 
       if (sessionRow?.brain_insights) {
         setBrainInsights(sessionRow.brain_insights)
+        hadStoredInsights = true
       }
       if (sessionRow?.chat_mode) {
         setChatMode(sessionRow.chat_mode)
@@ -281,16 +287,14 @@ export function useChat() {
       }
     } catch (e) {
       console.error('Session load error:', e)
+    } finally {
+      if (switching) setAnalyzing(false)
     }
 
-    // Re-analyze if the session has messages but no stored insights yet
-    if (existingMessages.length > 0) {
-      setTimeout(() => {
-        const store = useChatStore.getState()
-        if (store.currentSessionId === sessionId && !store.brainInsights) {
-          analyzeConversation()
-        }
-      }, 100)
+    // Only re-analyze if there are messages AND nothing was persisted —
+    // avoids overwriting the snapshot the user saw last time.
+    if (!hadStoredInsights && existingMessages.length > 0) {
+      analyzeConversation()
     }
   }
 
